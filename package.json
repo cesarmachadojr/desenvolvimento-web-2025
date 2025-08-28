@@ -1,0 +1,20 @@
+{
+  "name": "desenvolvimento-web-2025-main",
+  "version": "1.0.0",
+  "description": "Turistas e moradores, em qualquer região litorânea, têm dificuldade em descobrir e avaliar praias de forma confiável.\r Isso causa perda de tempo e experiências ruins, já que as informações estão espalhadas ou são incompletas.\r No início, o foco será **usuários que buscam praias para lazer**, com o objetivo de **organizar informações e permitir avaliações confiáveis**.",
+  "main": "index.js",
+  "type": "module",
+"scripts": {
+  "dev": "nodemon src/server.js",
+  "start": "node src/server.js"
+},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
