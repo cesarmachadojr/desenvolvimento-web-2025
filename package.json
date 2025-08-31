@@ -1,20 +1,33 @@
 {
   "name": "desenvolvimento-web-2025-main",
   "version": "1.0.0",
-  "description": "Turistas e moradores, em qualquer região litorânea, têm dificuldade em descobrir e avaliar praias de forma confiável.\r Isso causa perda de tempo e experiências ruins, já que as informações estão espalhadas ou são incompletas.\r No início, o foco será **usuários que buscam praias para lazer**, com o objetivo de **organizar informações e permitir avaliações confiáveis**.",
-  "main": "index.js",
+  "description": "API em Node.js com Express e PostgreSQL para cadastro e gerenciamento de produtos. Projeto voltado para aprendizado em Desenvolvimento Web 2025.",
+  "main": "src/server.js",
   "type": "module",
-"scripts": {
-  "dev": "nodemon src/server.js",
-  "start": "node src/server.js"
-},
-  "keywords": [],
-  "author": "",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "test": "echo \"No test specified\" && exit 0",
+    "lint": "echo \"Add ESLint config\" && exit 0"
+  },
+  "keywords": [
+    "node",
+    "express",
+    "postgresql",
+    "api",
+    "desenvolvimento-web"
+  ],
+  "author": "Cesar Junior",
   "license": "ISC",
   "dependencies": {
-    "express": "^5.1.0"
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
