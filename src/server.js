@@ -26,7 +26,8 @@ app.get("/usuarios", async (req, res) => {
 
 // criar um usuário
 app.post("/usuarios", async (req, res) => {
-    const { nome, email, senha_hash, foto_perfil, biografia } = req.body;
+    // Note: o campo 'biografia' foi removido, pois não existe na tabela 'usuarios'.
+    const { nome, email, senha_hash, foto_perfil } = req.body;
     if (!nome || !email || !senha_hash) {
         return res.status(400).json({ error: "nome, email e senha_hash são obrigatórios" });
     }
@@ -42,9 +43,10 @@ app.post("/usuarios", async (req, res) => {
         return res.status(400).json({ error: "senha_hash inválido" });
 
     try {
+        // Os nomes das colunas 'data_criacao' e 'data_atualizacao' estão corretos.
         const result = await pool.query(
-            "INSERT INTO usuarios (nome, email, senha_hash, foto_perfil, biografia, data_criacao, atualizacao_dados) VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING *",
-            [nome, email, senha_hash, foto_perfil, biografia]
+            "INSERT INTO usuarios (nome, email, senha_hash, foto_perfil, data_criacao, data_atualizacao) VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING *",
+            [nome, email, senha_hash, foto_perfil]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -60,7 +62,8 @@ app.post("/usuarios", async (req, res) => {
 // atualizar um usuário
 app.patch("/usuarios/:id", async (req, res) => {
     const { id } = req.params;
-    const { nome, email, senha_hash, foto_perfil, biografia } = req.body;
+    // Note: o campo 'biografia' foi removido, pois não existe na tabela 'usuarios'.
+    const { nome, email, senha_hash, foto_perfil } = req.body;
 
     const updates = [];
     const values = [];
@@ -82,16 +85,13 @@ app.patch("/usuarios/:id", async (req, res) => {
         updates.push(`foto_perfil = $${idx++}`);
         values.push(foto_perfil);
     }
-    if (typeof biografia === "string") {
-        updates.push(`biografia = $${idx++}`);
-        values.push(biografia);
-    }
 
     if (!updates.length) {
         return res.status(400).json({ error: "Nada válido para atualizar" });
     }
 
-    updates.push(`atualizacao_dados = NOW()`);
+    // O nome da coluna foi corrigido para 'data_atualizacao'
+    updates.push(`data_atualizacao = NOW()`);
     values.push(id);
 
     const query = `UPDATE usuarios SET ${updates.join(", ")} WHERE id_usuario = $${idx} RETURNING *`;
