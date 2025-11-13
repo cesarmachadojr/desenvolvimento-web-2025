@@ -4,15 +4,22 @@ import {
     listarUsuarios,
     criarUsuario,
     atualizarUsuario,
-    deletarUsuario
+    deletarUsuario,
+    login,   // 👈 NOVO: Importa a função de login
+    logout   // 👈 NOVO: Importa a função de logout
 } from "../controllers/usuarioController.js";
 
 const router = Router();
 
-// Define as rotas para o recurso de usuários
+// --- ROTAS DE AUTENTICAÇÃO ---
+// É prática padrão usar POST para login e logout em aplicações web.
+router.post("/login", login);      // Endpoint para iniciar a sessão
+router.post("/logout", logout);    // Endpoint para encerrar a sessão
+
+// --- ROTAS CRUD DE USUÁRIOS (Mantidas) ---
 router.get("/usuarios", listarUsuarios);
 router.post("/usuarios", criarUsuario);
-router.patch("/usuarios/:id", atualizarUsuario); // Usando PATCH para atualizações parciais
+router.patch("/usuarios/:id", atualizarUsuario); 
 router.delete("/usuarios/:id", deletarUsuario);
 
 export default router;

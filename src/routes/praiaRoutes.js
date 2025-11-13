@@ -7,13 +7,17 @@ import {
     atualizarPraia,
     deletarPraia
 } from "../controllers/praiaController.js";
+import { authMiddleware } from "../middlewares/authMiddleware.js"; // 👈 NOVO: Importar Middleware
 
 const router = Router();
 
 router.get("/praias", listarPraias);
 router.get("/praias/:id", detalharPraia);
-router.post("/praias", criarPraia);
-router.patch("/praias/:id", atualizarPraia);
-router.delete("/praias/:id", deletarPraia);
+
+// Rotas de manipulação (CRUD) protegidas pelo authMiddleware
+// Apenas usuários logados podem criar, atualizar ou deletar praias
+router.post("/praias", authMiddleware, criarPraia);       // 👈 PROTEGIDA
+router.patch("/praias/:id", authMiddleware, atualizarPraia); // 👈 PROTEGIDA
+router.delete("/praias/:id", authMiddleware, deletarPraia); // 👈 PROTEGIDA
 
 export default router;

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/styles.css"> 
+</head>
+<body>
+    <header>
+        <h1>🌊 Guia de Praias</h1>
+        <nav>
+            <a href="/">Home</a>
+            <% if (usuarioLogado) { %>
+                <a href="/praias/nova">Nova Praia</a>
+                <form action="/api/logout" method="POST" style="display:inline-block; margin:0;">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button type="submit" style="background:none; color:white; border:none; cursor:pointer;">Sair</button>
+                </form>
+            <% } else { %>
+                <a href="/login">Entrar</a>
+                <a href="/registrar">Registrar</a>
+            <% } %>
+        </nav>
+    </header>
+    <div class="container">
+        <%- body %>
+    </div>
+</body>
+</html>
