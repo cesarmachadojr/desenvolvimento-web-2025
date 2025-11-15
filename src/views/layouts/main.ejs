@@ -5,26 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= title || "Praias Brasil" %></title>
 
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Fonte Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body class="min-h-screen flex flex-col">
 
-    <!-- Navbar/Header -->
+    <!-- Navbar: só aparece se showNavbar não for false -->
     <% if (typeof showNavbar === "undefined" || showNavbar) { %>
         <%- include('partials/header') %>
     <% } %>
 
-    <!-- Conteúdo principal -->
     <main class="flex-grow w-full">
         <%- body %>
     </main>
 
-    <!-- Footer -->
     <footer class="mt-12 bg-gray-800 text-white p-6 text-center">
         <p>&copy; 2025 Praias Brasil. Projeto de Desenvolvimento Web.</p>
     </footer>

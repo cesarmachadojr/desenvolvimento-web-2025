@@ -1,148 +1,230 @@
 // src/controllers/praiaController.js
 import { pool } from "../db.js";
 
-// --- Listar todas as praias (com filtro opcional por cidade/estado) ---
-// O parâmetro isSSR (Server-Side Rendering) indica se a função deve retornar os dados (para EJS) 
-// ou enviar uma resposta JSON direta (para API)
+/* ============================================================
+   LISTAR PRAIAS (API + SSR)
+   ============================================================ */
 export const listarPraias = async (req, res, isSSR = false) => {
     const { cidade, estado } = req.query;
-    
-    // Consulta simples: usa a coluna 'media_avaliacao' que é mantida pelo avaliacaoController
-    let query = "SELECT * FROM praias p";
+
+    let query = `
+        SELECT 
+            p.*, 
+            COALESCE(AVG(a.nota), 0)::numeric(10,2) AS media_calc,
+            COUNT(a.id_avaliacao) AS total_avaliacoes
+        FROM praias p
+        LEFT JOIN avaliacoes a ON p.id_praia = a.id_praia
+    `;
+
+    const conditions = [];
     const values = [];
-    
-    if (cidade || estado) {
-        query += " WHERE";
-        let conditionIndex = 1;
-        if (cidade) {
-            query += ` cidade ILIKE $${conditionIndex++}`;
-            values.push(`%${cidade}%`);
-        }
-        if (estado) {
-            if (values.length > 0) query += " AND";
-            query += ` estado ILIKE $${conditionIndex++}`;
-            values.push(`%${estado}%`);
-        }
+    let idx = 1;
+
+    if (cidade) {
+        conditions.push(`p.cidade ILIKE $${idx++}`);
+        values.push(`%${cidade}%`);
     }
-    
-    query += " ORDER BY nome ASC";
+    if (estado) {
+        conditions.push(`p.estado ILIKE $${idx++}`);
+        values.push(`%${estado}%`);
+    }
+
+    if (conditions.length > 0) {
+        query += " WHERE " + conditions.join(" AND ");
+    }
+
+    query += `
+        GROUP BY p.id_praia
+        ORDER BY media_calc DESC, p.nome ASC
+    `;
 
     try {
         const result = await pool.query(query, values);
-        
-        // Se for Server-Side Rendering (chamada interna pelo server.js), retorna o objeto 'result'
+
+        const praias = result.rows.map(p => ({
+            ...p,
+            media_avaliacao: Number(p.media_calc),
+            total_avaliacoes: Number(p.total_avaliacoes)
+        }));
+
+        // 👉 Modo SSR (views)
         if (isSSR) {
-            // Mapeia os dados para formatar a avaliação para exibição amigável (ex: 4.50 ou 0.00)
-            const formattedRows = result.rows.map(praia => ({
-                ...praia,
-                media_avaliacao: praia.media_avaliacao ? parseFloat(praia.media_avaliacao).toFixed(2) : '0.00'
-            }));
-            return { rows: formattedRows };
+            return { rows: praias };
         }
-        
-        // Se for chamada API, envia JSON
-        res.json(result.rows);
+
+        // 👉 Modo API
+        return res.json(praias);
+
     } catch (err) {
-        console.error("Erro ao buscar praias:", err.message);
-        
-        if (isSSR) {
-            throw err;
-        }
-        
-        res.status(500).json({ error: "Erro interno do servidor" });
+        console.error("❌ ERRO LISTAR PRAIAS:", err.message);
+
+        if (isSSR) return { rows: [] };
+
+        return res.status(500).json({ error: "Erro interno do servidor." });
     }
 };
 
-// --- Detalhar uma praia específica ---
+/* ============================================================
+   DETALHAR PRAIA
+   ============================================================ */
 export const detalharPraia = async (req, res) => {
     const { id } = req.params;
-    try {
-        const result = await pool.query("SELECT * FROM praias WHERE id_praia = $1", [id]);
-        if (result.rowCount === 0) {
-            return res.status(404).json({ error: "Praia não encontrada." });
-        }
-        res.json(result.rows[0]);
-    } catch (err) {
-        console.error("Erro ao detalhar praia:", err.message);
-        res.status(500).json({ error: "Erro interno do servidor" });
-    }
-};
-
-// --- Criar uma nova praia ---
-export const criarPraia = async (req, res) => {
-    const { nome, cidade, estado, descricao, foto_url } = req.body;
-    
-    if (!nome || !cidade || !estado) {
-        return res.status(400).json({ error: "Nome, cidade e estado são obrigatórios." });
-    }
 
     try {
         const result = await pool.query(
-            "INSERT INTO praias (nome, cidade, estado, descricao, foto_url) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-            [nome, cidade, estado, descricao, foto_url]
+            `
+            SELECT p.*, 
+                   COALESCE(AVG(a.nota),0)::numeric(10,2) AS media_avaliacao,
+                   COUNT(a.id_avaliacao) AS total_avaliacoes
+            FROM praias p
+            LEFT JOIN avaliacoes a ON p.id_praia = a.id_praia
+            WHERE p.id_praia = $1
+            GROUP BY p.id_praia
+            `,
+            [id]
         );
-        res.status(201).json(result.rows[0]);
+
+        if (result.rowCount === 0)
+            return res.status(404).json({ error: "Praia não encontrada." });
+
+        return res.json(result.rows[0]);
+
     } catch (err) {
-        console.error("Erro ao criar praia:", err.message);
-        res.status(500).json({ error: "Erro interno do servidor" });
+        console.error("Erro ao detalhar praia:", err.message);
+        return res.status(500).json({ error: "Erro interno do servidor." });
     }
 };
 
-// --- Atualizar uma praia ---\
+/* ============================================================
+   CRIAR PRAIA
+   ============================================================ */
+export const criarPraia = async (req, res) => {
+    const { nome, cidade, estado, descricao, foto_url, categorias } = req.body;
+
+    if (!nome || !cidade || !estado) {
+        if (!req.session)
+            return res.status(400).json({ error: "Nome, cidade e estado são obrigatórios." });
+
+        req.session.errorMessage = "Nome, cidade e estado são obrigatórios.";
+        return res.redirect("/praias/nova");
+    }
+
+    const client = await pool.connect();
+
+    try {
+        await client.query("BEGIN");
+
+        const praiaResult = await client.query(
+            `INSERT INTO praias
+                (nome, cidade, estado, descricao, foto_url, data_criacao, data_atualizacao)
+             VALUES ($1,$2,$3,$4,$5,NOW(),NOW())
+             RETURNING id_praia, nome`,
+            [nome, cidade, estado, descricao, foto_url]
+        );
+
+        const novaPraia = praiaResult.rows[0];
+
+        if (categorias && Array.isArray(categorias)) {
+            await Promise.all(
+                categorias.map(idCategoria =>
+                    client.query(
+                        "INSERT INTO praias_categorias (id_praia, id_categoria) VALUES ($1,$2)",
+                        [novaPraia.id_praia, idCategoria]
+                    )
+                )
+            );
+        }
+
+        await client.query("COMMIT");
+
+        if (!req.session) return res.status(201).json(novaPraia);
+
+        req.session.successMessage = `Praia "${novaPraia.nome}" criada com sucesso!`;
+        return res.redirect("/");
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("Erro ao criar praia:", err.message);
+
+        if (!req.session)
+            return res.status(500).json({ error: "Erro interno ao cadastrar a praia." });
+
+        req.session.errorMessage = "Erro ao criar praia. Tente novamente.";
+        return res.redirect("/praias/nova");
+
+    } finally {
+        client.release();
+    }
+};
+
+/* ============================================================
+   ATUALIZAR PRAIA
+   ============================================================ */
 export const atualizarPraia = async (req, res) => {
     const { id } = req.params;
     const { nome, cidade, estado, descricao, foto_url } = req.body;
-    
-    let updates = [];
+
+    let fields = [];
     let values = [];
     let idx = 1;
 
-    if (nome) { updates.push(`nome = $${idx++}`); values.push(nome); }
-    if (cidade) { updates.push(`cidade = $${idx++}`); values.push(cidade); }
-    if (estado) { updates.push(`estado = $${idx++}`); values.push(estado); }
-    if (descricao !== undefined) { updates.push(`descricao = $${idx++}`); values.push(descricao); }
-    if (foto_url !== undefined) { updates.push(`foto_url = $${idx++}`); values.push(foto_url); }
-    
-    if (updates.length === 0) {
-        return res.status(400).json({ error: "Nenhum campo fornecido para atualização." });
-    }
+    if (nome) { fields.push(`nome = $${idx++}`); values.push(nome); }
+    if (cidade) { fields.push(`cidade = $${idx++}`); values.push(cidade); }
+    if (estado) { fields.push(`estado = $${idx++}`); values.push(estado); }
+    if (descricao !== undefined) { fields.push(`descricao = $${idx++}`); values.push(descricao); }
+    if (foto_url !== undefined) { fields.push(`foto_url = $${idx++}`); values.push(foto_url); }
 
+    fields.push(`data_atualizacao = NOW()`);
     values.push(id);
-    const query = `UPDATE praias SET ${updates.join(", ")} WHERE id_praia = $${idx} RETURNING *`;
 
     try {
-        const result = await pool.query(query, values);
-        if (result.rowCount === 0) {
+        const result = await pool.query(
+            `UPDATE praias SET ${fields.join(", ")} WHERE id_praia = $${idx} RETURNING *`,
+            values
+        );
+
+        if (result.rowCount === 0)
             return res.status(404).json({ error: "Praia não encontrada." });
-        }
-        res.json(result.rows[0]);
+
+        return res.json(result.rows[0]);
+
     } catch (err) {
         console.error("Erro ao atualizar praia:", err.message);
-        res.status(500).json({ error: "Erro interno do servidor" });
+        return res.status(500).json({ error: "Erro interno do servidor." });
     }
 };
 
-// --- Deletar uma praia ---
+/* ============================================================
+   DELETAR PRAIA
+   ============================================================ */
 export const deletarPraia = async (req, res) => {
     const { id } = req.params;
+    const client = await pool.connect();
+
     try {
-        // É importante deletar primeiro as avaliações relacionadas (se houver CASCADE no BD, não é necessário aqui)
-        // Mas por segurança, vamos apenas deletar a praia. O BD deve ser configurado para o CASCADE.
+        await client.query("BEGIN");
 
-        // DELETE FROM praias_categorias WHERE id_praia = $1
-        // DELETE FROM avaliacoes WHERE id_praia = $1
+        await client.query("DELETE FROM avaliacoes WHERE id_praia = $1", [id]);
+        await client.query("DELETE FROM praias_categorias WHERE id_praia = $1", [id]);
 
-        const result = await pool.query("DELETE FROM praias WHERE id_praia = $1", [id]);
-        if (result.rowCount === 0) {
+        const result = await client.query(
+            "DELETE FROM praias WHERE id_praia = $1 RETURNING *",
+            [id]
+        );
+
+        await client.query("COMMIT");
+
+        if (result.rowCount === 0)
             return res.status(404).json({ error: "Praia não encontrada." });
-        }
-        res.status(204).end(); // 204 No Content
+
+        return res.status(204).send();
+
     } catch (err) {
-        // Se houver erro de Foreign Key (dependências), avisa o usuário.
-        if (err.code === '23503') { 
-            return res.status(409).json({ error: "Não é possível deletar. Existem avaliações ou categorias associadas a esta praia." });
-        }
+        await client.query("ROLLBACK");
         console.error("Erro ao deletar praia:", err.message);
-        res.status(500).json({ error: "Erro interno do servidor" });
+        return res.status(500).json({ error: "Erro interno ao deletar praia." });
+
+    } finally {
+        client.release();
     }
 };

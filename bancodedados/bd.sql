@@ -97,3 +97,63 @@ FROM avaliacoes a
 JOIN usuarios u ON a.id_usuario = u.id_usuario
 JOIN praias p ON a.id_praia = p.id_praia
 WHERE a.nota = 5;
+
+
+-- DADOS DE EXEMPLO (POPULAÇÃO)
+
+-- 1. Inserir Usuários (senha_hash é um placeholder para esta fase)
+INSERT INTO usuarios (nome, email, senha_hash, foto_perfil, data_criacao, data_atualizacao) VALUES
+('Ana Paula', 'ana.paula@exemplo.com', 'hash_ana_123', NULL, NOW(), NOW()),
+('Bruno Silva', 'bruno.silva@exemplo.com', 'hash_bruno_456', NULL, NOW(), NOW()),
+('Carla Souza', 'carla.souza@exemplo.com', 'hash_carla_789', NULL, NOW(), NOW());
+
+-- 2. Inserir Praias
+INSERT INTO praias (nome, cidade, estado, descricao, foto_url, media_avaliacao) VALUES
+('Praia do Rosa', 'Imbituba', 'SC', 'Famosa por suas ondas perfeitas para o surf e beleza natural intocada.', 'rosa.jpg', 0.00),
+('Praia de Iracema', 'Fortaleza', 'CE', 'Praia urbana com vida noturna agitada e ótimos restaurantes na orla.', 'iracema.jpg', 0.00),
+('Praia de Pipa', 'Tibau do Sul', 'RN', 'Conhecida por suas falésias impressionantes e pela presença de golfinhos.', 'pipa.jpg', 0.00);
+
+-- 3. Inserir Categorias
+INSERT INTO categorias (nome) VALUES
+('Surf'),
+('Família'),
+('Vida Noturna'),
+('Beleza Natural');
+
+-- 4. Inserir Avaliações (Foreign Keys referenciam Usuários e Praias acima)
+-- Ana (id 1) avalia Rosa (id 1)
+-- Bruno (id 2) avalia Iracema (id 2)
+-- Carla (id 3) avalia Pipa (id 3)
+-- Bruno (id 2) avalia Rosa (id 1)
+INSERT INTO avaliacoes (nota, comentario, id_usuario, id_praia) VALUES
+(5, 'Ondas perfeitas e visual de tirar o fôlego!', 1, 1),
+(4, 'Ótimo lugar para caminhar no fim da tarde.', 2, 2),
+(5, 'Nunca vi tantos golfinhos, uma experiência mágica.', 3, 3),
+(3, 'A praia é bonita, mas achei a infraestrutura fraca.', 2, 1);
+
+-- 5. Ligar Praias a Categorias (Praias_Categorias)
+INSERT INTO praias_categorias (id_praia, id_categoria) VALUES
+(1, 1), -- Praia do Rosa é para Surf
+(1, 4), -- Praia do Rosa tem Beleza Natural
+(2, 2), -- Praia de Iracema é para Família
+(2, 3), -- Praia de Iracema tem Vida Noturna
+(3, 4); -- Praia de Pipa tem Beleza Natural
+
+-- 6. ATUALIZAR MÉDIA DE AVALIAÇÃO (IMPORTANTE)
+-- Nota: Esta parte deve ser feita pelo seu Controller (criarAvaliacao), mas é bom rodar manualmente para os dados iniciais.
+UPDATE praias p SET media_avaliacao = (
+    SELECT AVG(a.nota) FROM avaliacoes a WHERE a.id_praia = p.id_praia
+);
+
+-- FIM DA POPULAÇÃO
+
+
+INSERT INTO usuarios (nome, email, senha_hash, foto_perfil, data_criacao, data_atualizacao)
+VALUES (
+    'Teste Login', 
+    'teste@exemplo.com', 
+    '123456',  -- senha em texto simples para teste
+    NULL, 
+    NOW(), 
+    NOW()
+);
