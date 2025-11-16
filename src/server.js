@@ -21,10 +21,9 @@ dotenv.config();
 const app = express();
 
 // ============================================================
-// EJS CONFIGURAÇÃO
+// CONFIGURAÇÃO DO EJS
 // ============================================================
 const __dirname = path.resolve();
-
 app.set("views", path.join(__dirname, "src", "views"));
 app.set("view engine", "ejs");
 
@@ -62,7 +61,7 @@ app.use(session({
 const csrfProtection = csrf({ cookie: true });
 
 app.use((req, res, next) => {
-    // Escapa a API do CSRF
+    // Aplicar CSRF somente nas rotas de Views (não API)
     if (!req.originalUrl.startsWith("/api")) {
         return csrfProtection(req, res, next);
     }
@@ -70,13 +69,13 @@ app.use((req, res, next) => {
 });
 
 // ============================================================
-// VARIÁVEIS GLOBAIS (VIEWS)
+// VARIÁVEIS GLOBAIS PARA VIEWS
 // ============================================================
 app.use((req, res, next) => {
     // Se o usuário está logado
     res.locals.usuarioLogado = !!req.session.userId;
 
-    // csrfToken (evita crash nas rotas sem csrf)
+    // csrfToken (evita crash nas rotas sem CSRF)
     try {
         res.locals.csrfToken = req.csrfToken ? req.csrfToken() : "";
     } catch {
@@ -84,8 +83,8 @@ app.use((req, res, next) => {
     }
 
     // Flash messages
-    res.locals.successMessage = req.session.successMessage;
-    res.locals.errorMessage = req.session.errorMessage;
+    res.locals.successMessage = req.session.successMessage || null;
+    res.locals.errorMessage = req.session.errorMessage || null;
 
     delete req.session.successMessage;
     delete req.session.errorMessage;
@@ -103,14 +102,13 @@ app.get("/health", (req, res) => {
 // ============================================================
 // ROTAS DA API
 // ============================================================
-app.use("/api", usuarioRoutes);
-app.use("/api", praiaRoutes);
-app.use("/api", categoriaRoutes);
-app.use("/api", avaliacaoRoutes);
+app.use("/api/usuarios", usuarioRoutes);
+app.use("/api/praias", praiaRoutes);
+app.use("/api/categorias", categoriaRoutes);
+app.use("/api/avaliacoes", avaliacaoRoutes);
 
 // ============================================================
 // ROTAS SSR (PÁGINAS)
-// ============================================================
 app.use("/", viewsRouter);
 
 // ============================================================
@@ -128,15 +126,20 @@ app.use((req, res) => {
 });
 
 // ============================================================
-// START SERVER
+// INICIAR SERVIDOR
 // ============================================================
 const PORT = process.env.PORT || 3000;
 
 const start = async () => {
-    await testConnection();
-    app.listen(PORT, "0.0.0.0", () =>
-        console.log(`Servidor rodando: http://localhost:${PORT}`)
-    );
+    try {
+        await testConnection();
+        app.listen(PORT, "0.0.0.0", () =>
+            console.log(`Servidor rodando: http://localhost:${PORT}`)
+        );
+    } catch (err) {
+        console.error("Falha ao iniciar o servidor:", err.message);
+        process.exit(1);
+    }
 };
 
 start();

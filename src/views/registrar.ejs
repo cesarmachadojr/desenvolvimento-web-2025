@@ -1,21 +1,72 @@
-<h2>Criar Nova Conta</h2>
+<div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-2xl mt-10">
 
-<form action="/api/usuarios" method="POST">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>"> 
+    <h2 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">Criar sua Conta</h2>
 
-    <label for="nome">Nome:</label>
-    <input type="text" id="nome" name="nome" required>
+    <!-- Mensagem de erro -->
+    <% if (errorMessage) { %>
+        <p class="text-red-500 text-center mb-4"><%= errorMessage %></p>
+    <% } %>
 
-    <label for="email">Email:</label>
-    <input type="email" id="email" name="email" required>
+    <!-- Mensagem de sucesso -->
+    <% if (successMessage) { %>
+        <p class="text-green-500 text-center mb-4"><%= successMessage %></p>
+    <% } %>
 
-    <label for="senha">Senha:</label>
-    <input type="password" id="senha" name="senha" required> 
-    
-    <label for="foto_perfil">URL da Foto (opcional):</label>
-    <input type="text" id="foto_perfil" name="foto_perfil">
+    <form action="/registrar" method="POST" class="space-y-6">
+        <!-- CSRF token -->
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-    <button type="submit">Registrar</button>
-</form>
+        <div>
+            <label for="nome" class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+            <input type="text" id="nome" name="nome" required
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                   placeholder="Seu nome completo">
+        </div>
 
-<p>Já tem uma conta? <a href="/login">Faça Login.</a></p>
+        <div>
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input type="email" id="email" name="email" required
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                   placeholder="seu.email@exemplo.com">
+        </div>
+
+        <div>
+            <label for="senha" class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+            <div class="relative">
+                <input type="password" id="senha" name="senha" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                       placeholder="••••••••">
+                <button type="button" id="toggleSenha"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-blue-600">
+                    Mostrar
+                </button>
+            </div>
+        </div>
+
+        <button type="submit"
+                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+            Criar Conta
+        </button>
+    </form>
+
+    <p class="mt-6 text-center text-sm text-gray-600">
+        Já tem uma conta?
+        <a href="/" class="font-medium text-blue-600 hover:text-blue-500">Faça login aqui</a>
+    </p>
+</div>
+
+<!-- Script para mostrar/ocultar senha -->
+<script>
+    const senhaInput = document.getElementById("senha");
+    const toggleSenha = document.getElementById("toggleSenha");
+
+    toggleSenha.addEventListener("click", () => {
+        if (senhaInput.type === "password") {
+            senhaInput.type = "text";
+            toggleSenha.textContent = "Ocultar";
+        } else {
+            senhaInput.type = "password";
+            toggleSenha.textContent = "Mostrar";
+        }
+    });
+</script>

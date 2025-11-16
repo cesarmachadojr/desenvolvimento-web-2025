@@ -3,9 +3,10 @@ import { pool } from "../db.js";
 
 /* ============================================================
    LISTAR PRAIAS (API + SSR)
-   ============================================================ */
+============================================================ */
 export const listarPraias = async (req, res, isSSR = false) => {
     const { cidade, estado } = req.query;
+    const userId = req.session?.userId; // Usuário logado
 
     let query = `
         SELECT 
@@ -29,6 +30,10 @@ export const listarPraias = async (req, res, isSSR = false) => {
         values.push(`%${estado}%`);
     }
 
+    // Só listar praias do usuário logado (opcional, se quiser filtrar)
+    // Se quiser listar todas, comente a linha abaixo
+    // conditions.push(`p.id_usuario = $${idx++}`); values.push(userId);
+
     if (conditions.length > 0) {
         query += " WHERE " + conditions.join(" AND ");
     }
@@ -47,26 +52,22 @@ export const listarPraias = async (req, res, isSSR = false) => {
             total_avaliacoes: Number(p.total_avaliacoes)
         }));
 
-        // 👉 Modo SSR (views)
         if (isSSR) {
             return { rows: praias };
         }
 
-        // 👉 Modo API
         return res.json(praias);
 
     } catch (err) {
         console.error("❌ ERRO LISTAR PRAIAS:", err.message);
-
         if (isSSR) return { rows: [] };
-
         return res.status(500).json({ error: "Erro interno do servidor." });
     }
 };
 
 /* ============================================================
    DETALHAR PRAIA
-   ============================================================ */
+============================================================ */
 export const detalharPraia = async (req, res) => {
     const { id } = req.params;
 
@@ -96,10 +97,11 @@ export const detalharPraia = async (req, res) => {
 };
 
 /* ============================================================
-   CRIAR PRAIA
-   ============================================================ */
+   CRIAR PRAIA (vinculada ao usuário logado)
+============================================================ */
 export const criarPraia = async (req, res) => {
     const { nome, cidade, estado, descricao, foto_url, categorias } = req.body;
+    const id_usuario = req.session?.userId; // Usuário logado
 
     if (!nome || !cidade || !estado) {
         if (!req.session)
@@ -116,10 +118,10 @@ export const criarPraia = async (req, res) => {
 
         const praiaResult = await client.query(
             `INSERT INTO praias
-                (nome, cidade, estado, descricao, foto_url, data_criacao, data_atualizacao)
-             VALUES ($1,$2,$3,$4,$5,NOW(),NOW())
+                (nome, cidade, estado, descricao, foto_url, id_usuario, data_criacao, data_atualizacao)
+             VALUES ($1,$2,$3,$4,$5,$6,NOW(),NOW())
              RETURNING id_praia, nome`,
-            [nome, cidade, estado, descricao, foto_url]
+            [nome, cidade, estado, descricao, foto_url, id_usuario]
         );
 
         const novaPraia = praiaResult.rows[0];
@@ -140,7 +142,7 @@ export const criarPraia = async (req, res) => {
         if (!req.session) return res.status(201).json(novaPraia);
 
         req.session.successMessage = `Praia "${novaPraia.nome}" criada com sucesso!`;
-        return res.redirect("/");
+        return res.json(novaPraia);
 
     } catch (err) {
         await client.query("ROLLBACK");
@@ -159,32 +161,40 @@ export const criarPraia = async (req, res) => {
 
 /* ============================================================
    ATUALIZAR PRAIA
-   ============================================================ */
+============================================================ */
 export const atualizarPraia = async (req, res) => {
     const { id } = req.params;
+    const id_usuario = req.session?.userId; // usuário logado
     const { nome, cidade, estado, descricao, foto_url } = req.body;
 
-    let fields = [];
-    let values = [];
-    let idx = 1;
-
-    if (nome) { fields.push(`nome = $${idx++}`); values.push(nome); }
-    if (cidade) { fields.push(`cidade = $${idx++}`); values.push(cidade); }
-    if (estado) { fields.push(`estado = $${idx++}`); values.push(estado); }
-    if (descricao !== undefined) { fields.push(`descricao = $${idx++}`); values.push(descricao); }
-    if (foto_url !== undefined) { fields.push(`foto_url = $${idx++}`); values.push(foto_url); }
-
-    fields.push(`data_atualizacao = NOW()`);
-    values.push(id);
-
     try {
+        // Verifica se a praia pertence ao usuário logado
+        const check = await pool.query(
+            "SELECT * FROM praias WHERE id_praia = $1 AND id_usuario = $2",
+            [id, id_usuario]
+        );
+
+        if (check.rowCount === 0) {
+            return res.status(403).json({ error: "Não autorizado a editar esta praia." });
+        }
+
+        let fields = [];
+        let values = [];
+        let idx = 1;
+
+        if (nome) { fields.push(`nome = $${idx++}`); values.push(nome); }
+        if (cidade) { fields.push(`cidade = $${idx++}`); values.push(cidade); }
+        if (estado) { fields.push(`estado = $${idx++}`); values.push(estado); }
+        if (descricao !== undefined) { fields.push(`descricao = $${idx++}`); values.push(descricao); }
+        if (foto_url !== undefined) { fields.push(`foto_url = $${idx++}`); values.push(foto_url); }
+
+        fields.push(`data_atualizacao = NOW()`);
+        values.push(id);
+
         const result = await pool.query(
             `UPDATE praias SET ${fields.join(", ")} WHERE id_praia = $${idx} RETURNING *`,
             values
         );
-
-        if (result.rowCount === 0)
-            return res.status(404).json({ error: "Praia não encontrada." });
 
         return res.json(result.rows[0]);
 
@@ -196,12 +206,24 @@ export const atualizarPraia = async (req, res) => {
 
 /* ============================================================
    DELETAR PRAIA
-   ============================================================ */
+============================================================ */
 export const deletarPraia = async (req, res) => {
     const { id } = req.params;
+    const id_usuario = req.session?.userId; // usuário logado
     const client = await pool.connect();
 
     try {
+        // Verifica se a praia pertence ao usuário logado
+        const check = await client.query(
+            "SELECT * FROM praias WHERE id_praia = $1 AND id_usuario = $2",
+            [id, id_usuario]
+        );
+
+        if (check.rowCount === 0) {
+            client.release();
+            return res.status(403).json({ error: "Não autorizado a deletar esta praia." });
+        }
+
         await client.query("BEGIN");
 
         await client.query("DELETE FROM avaliacoes WHERE id_praia = $1", [id]);
@@ -213,9 +235,6 @@ export const deletarPraia = async (req, res) => {
         );
 
         await client.query("COMMIT");
-
-        if (result.rowCount === 0)
-            return res.status(404).json({ error: "Praia não encontrada." });
 
         return res.status(204).send();
 

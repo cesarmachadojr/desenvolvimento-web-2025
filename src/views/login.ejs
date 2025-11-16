@@ -2,13 +2,13 @@
   <h2 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">Acesse sua Conta</h2>
 
   <!-- Mensagem de erro -->
-  <% if (typeof error !== "undefined") { %>
-    <p class="text-red-500 text-center mb-4"><%= error %></p>
+  <% if (errorMessage) { %>
+    <p class="text-red-500 text-center mb-4"><%= errorMessage %></p>
   <% } %>
 
   <!-- Mensagem de sucesso -->
-  <% if (typeof success !== "undefined") { %>
-    <p class="text-green-500 text-center mb-4"><%= success %></p>
+  <% if (successMessage) { %>
+    <p class="text-green-500 text-center mb-4"><%= successMessage %></p>
   <% } %>
 
   <!-- Formulário POST para /login -->
@@ -43,7 +43,7 @@
 
   <p class="mt-6 text-center text-sm text-gray-600">
       Não tem uma conta? 
-      <a href="/usuarios/cadastrar" class="font-medium text-blue-600 hover:text-blue-500">
+      <a href="/registrar" class="font-medium text-blue-600 hover:text-blue-500">
           Cadastre-se aqui.
       </a>
   </p>

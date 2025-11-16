@@ -23,7 +23,7 @@ router.post("/logout", logout);
 router.get("/usuarios", listarUsuarios);
 
 // Recebe dados do formulário de cadastro
-router.post("/usuarios/cadastrar", criarUsuario);
+router.post("/usuarios/cadastrar", criarUsuario); // ✅ Cadastro de usuário via POST
 
 router.patch("/usuarios/:id", atualizarUsuario);
 router.delete("/usuarios/:id", deletarUsuario);

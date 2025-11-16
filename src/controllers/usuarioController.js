@@ -32,16 +32,20 @@ export const criarUsuario = async (req, res) => {
     }
 
     try {
-        const saltRounds = 10;
-        const senha_hash = await bcrypt.hash(senha, saltRounds);
+        const senha_hash = await bcrypt.hash(senha, 10);
 
         const result = await pool.query(
             `INSERT INTO usuarios 
              (nome, email, senha_hash, foto_perfil, bio, data_criacao, data_atualizacao)
              VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
              RETURNING id_usuario, nome, email`,
-            [nome, email, senha_hash, foto_perfil, bio]
+            [nome, email, senha_hash, foto_perfil || null, bio || null]
         );
+
+        // Criar sessão automaticamente após registro
+        if (req.session) {
+            req.session.userId = result.rows[0].id_usuario;
+        }
 
         return res.status(201).json({
             message: "Usuário criado com sucesso!",
@@ -51,7 +55,7 @@ export const criarUsuario = async (req, res) => {
     } catch (err) {
         console.error("Erro ao criar usuário:", err.message);
 
-        if (err.code === "23505") {
+        if (err.code === "23505") { // Violação de UNIQUE (email)
             return res.status(409).json({ error: "Este email já está cadastrado." });
         }
 
@@ -88,7 +92,9 @@ export const login = async (req, res) => {
         }
 
         // Criar a sessão
-        req.session.userId = usuario.id_usuario;
+        if (req.session) {
+            req.session.userId = usuario.id_usuario;
+        }
 
         return res.status(200).json({
             message: `Bem-vindo(a), ${usuario.nome}!`,
@@ -105,11 +111,12 @@ export const login = async (req, res) => {
    ➤ LOGOUT
    ============================================================ */
 export const logout = (req, res) => {
+    if (!req.session) return res.status(400).json({ error: "Sessão não encontrada." });
+
     req.session.destroy(err => {
         if (err) {
             return res.status(500).json({ error: "Não foi possível deslogar." });
         }
-
         return res.status(200).json({ message: "Logout realizado com sucesso!" });
     });
 };
@@ -127,15 +134,12 @@ export const atualizarUsuario = async (req, res) => {
 
     if (nome) { updates.push(`nome = $${idx++}`); values.push(nome); }
     if (email) { updates.push(`email = $${idx++}`); values.push(email); }
-
     if (senha) {
-        const saltRounds = 10;
-        const senha_hash = await bcrypt.hash(senha, saltRounds);
+        const senha_hash = await bcrypt.hash(senha, 10);
         updates.push(`senha_hash = $${idx++}`);
         values.push(senha_hash);
     }
-
-    if (foto_perfil) { updates.push(`foto_perfil = $${idx++}`); values.push(foto_perfil); }
+    if (foto_perfil !== undefined) { updates.push(`foto_perfil = $${idx++}`); values.push(foto_perfil); }
     if (bio !== undefined) { updates.push(`bio = $${idx++}`); values.push(bio); }
 
     if (updates.length === 0) {
@@ -147,8 +151,7 @@ export const atualizarUsuario = async (req, res) => {
 
     try {
         const result = await pool.query(
-            `UPDATE usuarios SET ${updates.join(", ")} WHERE id_usuario = $${idx}
-             RETURNING id_usuario, nome, email`,
+            `UPDATE usuarios SET ${updates.join(", ")} WHERE id_usuario = $${idx} RETURNING id_usuario, nome, email`,
             values
         );
 
@@ -160,6 +163,11 @@ export const atualizarUsuario = async (req, res) => {
 
     } catch (err) {
         console.error("Erro ao atualizar usuário:", err.message);
+
+        if (err.code === "23505") { // email duplicado
+            return res.status(409).json({ error: "Este email já está em uso." });
+        }
+
         return res.status(500).json({ error: "Erro interno do servidor" });
     }
 };

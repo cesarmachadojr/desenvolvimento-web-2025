@@ -157,3 +157,24 @@ VALUES (
     NOW(), 
     NOW()
 );
+
+
+ALTER TABLE praias
+ADD COLUMN id_usuario INT;
+
+ALTER TABLE praias
+ADD CONSTRAINT fk_usuario
+FOREIGN KEY (id_usuario)
+REFERENCES usuarios (id_usuario);
+
+
+cesar@email.com
+123456
+
+enilda@email.com
+123
+
+
+ALTER TABLE praias
+ADD COLUMN data_criacao TIMESTAMP DEFAULT NOW(),
+ADD COLUMN data_atualizacao TIMESTAMP DEFAULT NOW();

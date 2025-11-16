@@ -1,12 +1,12 @@
 // src/routes/viewsRouter.js
 import { Router } from "express";
 import { pool } from "../db.js";
+import bcrypt from "bcrypt"; // ✅ Import bcrypt para hashing de senha
 
 // Controllers
 import {
     listarPraias,
     detalharPraia,
-    criarPraia,
     atualizarPraia
 } from "../controllers/praiaController.js";
 
@@ -14,7 +14,7 @@ const viewsRouter = Router();
 
 /* ============================================================
    ➤ MIDDLEWARE DE AUTENTICAÇÃO
-   ============================================================ */
+============================================================ */
 function authMiddleware(req, res, next) {
     if (!req.session.userId) {
         return res.redirect("/");
@@ -24,18 +24,19 @@ function authMiddleware(req, res, next) {
 
 /* ============================================================
    ➤ LOGIN (Página inicial)
-   ============================================================ */
+============================================================ */
 viewsRouter.get("/", (req, res) => {
     res.render("login", {
         title: "Login",
         showNavbar: false,
-        error: null
+        errorMessage: null,
+        successMessage: null
     });
 });
 
 /* ============================================================
    ➤ PROCESSAR LOGIN
-   ============================================================ */
+============================================================ */
 viewsRouter.post("/login", async (req, res) => {
     const { email, senha } = req.body;
 
@@ -48,18 +49,21 @@ viewsRouter.post("/login", async (req, res) => {
         if (rows.length === 0) {
             return res.render("login", {
                 title: "Login",
-                error: "Usuário não encontrado",
-                showNavbar: false
+                errorMessage: "Usuário não encontrado",
+                showNavbar: false,
+                successMessage: null
             });
         }
 
         const usuario = rows[0];
+        const senhaOk = await bcrypt.compare(senha, usuario.senha_hash);
 
-        if (senha !== usuario.senha_hash) {
+        if (!senhaOk) {
             return res.render("login", {
                 title: "Login",
-                error: "Senha incorreta",
-                showNavbar: false
+                errorMessage: "Senha incorreta",
+                showNavbar: false,
+                successMessage: null
             });
         }
 
@@ -71,15 +75,16 @@ viewsRouter.post("/login", async (req, res) => {
         console.error("❌ ERRO LOGIN:", err);
         return res.render("login", {
             title: "Login",
-            error: "Erro interno ao fazer login",
-            showNavbar: false
+            errorMessage: "Erro interno ao fazer login",
+            showNavbar: false,
+            successMessage: null
         });
     }
 });
 
 /* ============================================================
    ➤ LISTAR PRAIAS — PROTEGIDA
-   ============================================================ */
+============================================================ */
 viewsRouter.get("/praias", authMiddleware, async (req, res) => {
     try {
         const praiasResult = await listarPraias(req, null, true);
@@ -109,26 +114,29 @@ viewsRouter.get("/praias", authMiddleware, async (req, res) => {
 
 /* ============================================================
    ➤ LOGOUT
-   ============================================================ */
+============================================================ */
 viewsRouter.get("/logout", (req, res) => {
     req.session.destroy(() => res.redirect("/"));
 });
 
 /* ============================================================
    ➤ FORM DE REGISTRO DE USUÁRIO
-   ============================================================ */
+============================================================ */
 viewsRouter.get("/registrar", (req, res) => {
-    res.render("registrar", { title: "Registrar Conta", showNavbar: false });
+    res.render("registrar", {
+        title: "Registrar Conta",
+        showNavbar: false,
+        errorMessage: null
+    });
 });
 
 /* ============================================================
    ➤ PROCESSAR REGISTRO DO USUÁRIO
-   ============================================================ */
+============================================================ */
 viewsRouter.post("/registrar", async (req, res) => {
     const { nome, email, senha } = req.body;
 
     try {
-        // Verifica se já existe email
         const existe = await pool.query(
             "SELECT * FROM usuarios WHERE email = $1",
             [email]
@@ -137,22 +145,21 @@ viewsRouter.post("/registrar", async (req, res) => {
         if (existe.rows.length > 0) {
             return res.render("registrar", {
                 title: "Registrar Conta",
-                error: "Este e-mail já está cadastrado!",
+                errorMessage: "Este e-mail já está cadastrado!",
                 showNavbar: false
             });
         }
 
-        // Cria usuário
+        const senha_hash = await bcrypt.hash(senha, 10);
+
         const result = await pool.query(
-            `INSERT INTO usuarios (nome, email, senha_hash)
-             VALUES ($1, $2, $3)
+            `INSERT INTO usuarios (nome, email, senha_hash, data_criacao, data_atualizacao)
+             VALUES ($1, $2, $3, NOW(), NOW())
              RETURNING id_usuario`,
-            [nome, email, senha]
+            [nome, email, senha_hash]
         );
 
         const novoId = result.rows[0].id_usuario;
-
-        // Login automático
         req.session.userId = novoId;
 
         return res.redirect("/praias");
@@ -161,52 +168,88 @@ viewsRouter.post("/registrar", async (req, res) => {
         console.error("❌ ERRO REGISTRO:", err);
         return res.render("registrar", {
             title: "Registrar Conta",
-            error: "Erro ao criar usuário",
+            errorMessage: "Erro ao criar usuário",
             showNavbar: false
         });
     }
 });
 
 /* ============================================================
-   ➤ FORM PARA NOVA PRAIA
-   ============================================================ */
-viewsRouter.get("/praias/nova", authMiddleware, (req, res) => {
-    res.render("praia_cadastro", { title: "Cadastrar Nova Praia", praia: null });
+   ➤ FORM PARA NOVA PRAIA (Carrega categorias)
+============================================================ */
+viewsRouter.get("/praias/nova", authMiddleware, async (req, res) => {
+    try {
+        const { rows: categorias } = await pool.query("SELECT * FROM categorias ORDER BY nome ASC");
+
+        res.render("praia_cadastro", {
+            title: "Cadastrar Nova Praia",
+            praia: null,
+            categorias
+        });
+
+    } catch (err) {
+        console.error("❌ ERRO AO CARREGAR CATEGORIAS:", err);
+        req.session.errorMessage = "Erro ao carregar categorias";
+        return res.redirect("/praias");
+    }
 });
 
 /* ============================================================
    ➤ SALVAR NOVA PRAIA
-   ============================================================ */
+   (Funcionando com formulário e categorias)
+============================================================ */
 viewsRouter.post("/praias/nova", authMiddleware, async (req, res) => {
+    const { nome, cidade, estado, descricao, foto_url } = req.body;
+    const categorias = Array.isArray(req.body.categorias)
+        ? req.body.categorias
+        : req.body.categorias ? [req.body.categorias] : [];
+    const id_usuario = req.session.userId;
+
+    const client = await pool.connect();
+
     try {
-        const mockRes = {
-            json: (data) => {
-                if (data?.error) {
-                    req.session.errorMessage = data.error;
-                    return res.redirect("/praias/nova");
-                }
+        await client.query("BEGIN");
 
-                req.session.successMessage = `Praia "${data.nome}" cadastrada com sucesso!`;
-                return res.redirect("/praias");
-            }
-        };
+        // Inserir praia
+        const result = await client.query(
+            `INSERT INTO praias (nome, cidade, estado, descricao, foto_url, id_usuario, data_criacao, data_atualizacao)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+             RETURNING id_praia, nome`,
+            [nome, cidade, estado, descricao, foto_url, id_usuario]
+        );
 
-        await criarPraia(req, mockRes);
+        const novaPraia = result.rows[0];
+
+        // Inserir categorias
+        for (const idCategoria of categorias) {
+            await client.query(
+                `INSERT INTO praias_categorias (id_praia, id_categoria) VALUES ($1, $2)`,
+                [novaPraia.id_praia, idCategoria]
+            );
+        }
+
+        await client.query("COMMIT");
+
+        req.session.successMessage = `Praia "${novaPraia.nome}" cadastrada com sucesso!`;
+        return res.redirect("/praias");
 
     } catch (err) {
+        await client.query("ROLLBACK");
         console.error("❌ ERRO NOVA PRAIA:", err);
         req.session.errorMessage = "Erro interno ao cadastrar praia";
         return res.redirect("/praias/nova");
+
+    } finally {
+        client.release();
     }
 });
 
 /* ============================================================
    ➤ DETALHES DA PRAIA
-   ============================================================ */
+============================================================ */
 viewsRouter.get("/praias/:id", authMiddleware, async (req, res) => {
     try {
         let praia = null;
-
         const mockRes = { json: (data) => { praia = data; } };
 
         await detalharPraia(req, mockRes);
@@ -228,11 +271,10 @@ viewsRouter.get("/praias/:id", authMiddleware, async (req, res) => {
 
 /* ============================================================
    ➤ FORM PARA EDITAR PRAIA
-   ============================================================ */
+============================================================ */
 viewsRouter.get("/praias/:id/editar", authMiddleware, async (req, res) => {
     try {
         let praia = null;
-
         const mockRes = { json: (data) => { praia = data; } };
 
         await detalharPraia(req, mockRes);
@@ -254,11 +296,10 @@ viewsRouter.get("/praias/:id/editar", authMiddleware, async (req, res) => {
 
 /* ============================================================
    ➤ SALVAR EDIÇÃO
-   ============================================================ */
+============================================================ */
 viewsRouter.post("/praias/:id/editar", authMiddleware, async (req, res) => {
     try {
         const mockRes = { json: () => {} };
-
         await atualizarPraia(req, mockRes);
 
         req.session.successMessage = "Praia atualizada com sucesso!";
