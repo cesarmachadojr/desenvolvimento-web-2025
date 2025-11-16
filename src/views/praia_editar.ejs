@@ -1,10 +1,10 @@
-<!-- src/views/praia_editar.ejs -->
-
 <div class="container mx-auto max-w-3xl mt-10 bg-white p-6 rounded-xl shadow">
 
     <h1 class="text-3xl font-bold mb-6">Editar Praia</h1>
 
-    <form action="/praias/<%= praia.id %>/editar" method="POST" class="space-y-6">
+    <form action="/praias/<%= praia.id_praia %>/editar" method="POST" class="space-y-6">
+        <!-- CSRF Token -->
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
         <div>
             <label class="font-semibold">Nome da Praia</label>
@@ -19,12 +19,12 @@
 
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="font-semibold">UF</label>
+                <label class="font-semibold">Estado (UF)</label>
                 <input 
                     type="text"
-                    name="uf"
+                    name="estado"
                     maxlength="2"
-                    value="<%= praia.uf %>"
+                    value="<%= praia.estado %>"
                     required
                     class="w-full p-2 border rounded-lg"
                 >
@@ -52,35 +52,35 @@
         </div>
 
         <div>
-            <label class="font-semibold">Nota (0-10)</label>
+            <label class="font-semibold">URL da Imagem</label>
             <input 
-                type="number"
-                name="nota"
-                min="0"
-                max="10"
-                value="<%= praia.nota %>"
-                required
+                type="url"
+                name="foto_url"
+                value="<%= praia.foto_url %>"
                 class="w-full p-2 border rounded-lg"
             >
         </div>
 
         <div>
-            <label class="font-semibold">URL da Imagem</label>
-            <input 
-                type="url"
-                name="imagem_url"
-                value="<%= praia.imagem_url %>"
-                class="w-full p-2 border rounded-lg"
-            >
+            <label class="font-semibold">Categorias</label>
+            <select name="categorias" multiple class="w-full p-2 border rounded-lg">
+                <% categorias.forEach(cat => { %>
+                    <option value="<%= cat.id_categoria %>" 
+                        <%= categoriasSelecionadas.includes(cat.id_categoria) ? "selected" : "" %>>
+                        <%= cat.nome %>
+                    </option>
+                <% }) %>
+            </select>
         </div>
 
         <button
+            type="submit"
             class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-800 transition">
             Salvar Alterações
         </button>
 
         <a 
-            href="/praias/<%= praia.id %>"
+            href="/praias/<%= praia.id_praia %>"
             class="block text-center mt-4 text-gray-700 hover:underline">
             Cancelar
         </a>

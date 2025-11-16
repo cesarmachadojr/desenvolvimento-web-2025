@@ -1,0 +1,64 @@
+<h1 class="text-2xl font-bold mb-6">Meu Perfil</h1>
+
+<!-- Mensagens de sucesso/erro -->
+<% if (successMessage) { %>
+<div class="bg-green-100 border border-green-300 text-green-800 px-4 py-3 rounded mb-4">
+    <%= successMessage %>
+</div>
+<% } %>
+
+<% if (errorMessage) { %>
+<div class="bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded mb-4">
+    <%= errorMessage %>
+</div>
+<% } %>
+
+<!-- Formulário de dados da conta -->
+<h2 class="text-xl font-semibold mb-2">Dados da Conta</h2>
+<form action="/perfil/editar" method="POST" class="space-y-4 bg-white p-6 rounded shadow-md">
+    <!-- CSRF Token -->
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <div>
+        <label class="block font-semibold mb-1">Nome</label>
+        <input type="text" name="nome" value="<%= usuario.nome %>" class="border rounded w-full px-3 py-2" required>
+    </div>
+    <div>
+        <label class="block font-semibold mb-1">Email</label>
+        <input type="email" name="email" value="<%= usuario.email %>" class="border rounded w-full px-3 py-2" required>
+    </div>
+    <div>
+        <label class="block font-semibold mb-1">Nova senha (opcional)</label>
+        <input type="password" name="senha" class="border rounded w-full px-3 py-2">
+    </div>
+    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        Atualizar Conta
+    </button>
+</form>
+
+<!-- Botão excluir conta -->
+<form action="/perfil/excluir" method="POST" class="mt-4">
+    <!-- CSRF Token -->
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+        Excluir Conta
+    </button>
+</form>
+
+<!-- Lista de praias do usuário -->
+<h2 class="text-xl font-semibold mt-6 mb-2">Minhas Praias</h2>
+<% if (praias.length > 0) { %>
+<ul class="space-y-2">
+    <% praias.forEach(p => { %>
+        <li class="bg-white p-4 rounded shadow flex justify-between items-center">
+            <span class="font-semibold"><%= p.nome %></span>
+            <a href="/praias/<%= p.id_praia %>/editar" class="text-blue-600 hover:underline">
+                Editar
+            </a>
+        </li>
+    <% }) %>
+</ul>
+<% } else { %>
+<p>Você ainda não cadastrou nenhuma praia.</p>
+<% } %>
