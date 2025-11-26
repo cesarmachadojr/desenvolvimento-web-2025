@@ -1,31 +1,35 @@
-// src/routes/usuarioRoutes.js
 import { Router } from "express";
+import { authMiddleware } from "../middlewares/authMiddleware.js"; // 👈 NOVO: Importar middleware
+
 import {
-    listarUsuarios,
-    criarUsuario,
-    atualizarUsuario,
-    deletarUsuario,
-    login,
-    logout
-} from "../controllers/usuarioController.js";
+    listarPraias,
+    detalharPraia,
+    criarPraia,
+    atualizarPraia,
+    deletarPraia
+} from "../controllers/praiaController.js";
 
 const router = Router();
 
-/* ===========================================
-   AUTENTICAÇÃO
-=========================================== */
-router.post("/login", login);
-router.post("/logout", logout);
+// =======================================================
+// ROTAS DE CONSULTA (Abertas a todos)
+// =======================================================
 
-/* ===========================================
-   CRUD DE USUÁRIOS (API)
-=========================================== */
-router.get("/usuarios", listarUsuarios);
+router.get("/", listarPraias);                // Listar todas as praias
+router.get("/:id", detalharPraia);           // Detalhar uma praia específica
 
-// Recebe dados do formulário de cadastro
-router.post("/usuarios/cadastrar", criarUsuario); // ✅ Cadastro de usuário via POST
 
-router.patch("/usuarios/:id", atualizarUsuario);
-router.delete("/usuarios/:id", deletarUsuario);
+// =======================================================
+// ROTAS PROTEGIDAS (Requerem autenticação/autorização)
+// =======================================================
+
+// Criar Praia (Requer apenas login)
+router.post("/", authMiddleware(), criarPraia);             
+
+// Atualizar Praia (Requer login E ser o dono do recurso)
+router.put("/:id", authMiddleware({ ownerOf: "praia" }), atualizarPraia);      
+
+// Deletar Praia (Requer login E ser o dono do recurso)
+router.delete("/:id", authMiddleware({ ownerOf: "praia" }), deletarPraia);     
 
 export default router;

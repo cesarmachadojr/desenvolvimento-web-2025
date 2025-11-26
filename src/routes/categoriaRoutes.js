@@ -5,9 +5,11 @@ import { authMiddleware } from "../middlewares/authMiddleware.js"; // 👈 IMPOR
 
 const router = Router();
 
-router.get("/categorias", listarCategorias);
+// Rota para listar categorias (Aberto para todos)
+router.get("/", listarCategorias); // Ajustei o path para /
 
-// Rota de criação de categoria é restrita
-router.post("/categorias", authMiddleware, criarCategoria); // 👈 PROTEGER
+// Rota de criação de categoria é restrita (Requer autenticação)
+// O middleware precisa ser chamado como função: authMiddleware()
+router.post("/", authMiddleware(), criarCategoria); // 👈 PROTEGER
 
 export default router;

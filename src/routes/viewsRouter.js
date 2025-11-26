@@ -1,470 +1,294 @@
-// src/routes/viewsRouter.js
 import { Router } from "express";
 import { pool } from "../db.js";
 import bcrypt from "bcrypt";
+import { authMiddleware } from "../middlewares/authMiddleware.js"; // 👈 Importar o middleware global
 
-// Controllers
+// Controllers (apenas para simular o detalhamento de praia)
 import {
-    listarPraias,
-    detalharPraia,
-    atualizarPraia
+    listarPraias,
+    detalharPraia,
+    atualizarPraia
 } from "../controllers/praiaController.js";
 
 const viewsRouter = Router();
 
 /* ============================================================
-   ➤ MIDDLEWARE DE AUTENTICAÇÃO
-============================================================ */
-function authMiddleware(req, res, next) {
-    if (!req.session.userId) {
-        return res.redirect("/");
-    }
-    next();
-}
-
-/* ============================================================
-   ➤ ADICIONAR CSRF TOKEN EM TODAS AS VIEWS
+   ➤ MIDDLEWARE PARA INJEÇÃO DE VARIÁVEIS LOCAIS (CSRF, Mensagens)
 ============================================================ */
 viewsRouter.use((req, res, next) => {
-    res.locals.csrfToken = req.csrfToken ? req.csrfToken() : "";
-    next();
+    // Injetar token CSRF para formulários
+    res.locals.csrfToken = req.csrfToken ? req.csrfToken() : "";
+    
+    // Limpar mensagens da sessão e injetá-las em res.locals
+    res.locals.successMessage = req.session.successMessage;
+    res.locals.errorMessage = req.session.errorMessage;
+    
+    delete req.session.successMessage;
+    delete req.session.errorMessage;
+
+    next();
 });
 
+/* // ❌ REMOVIDO: O authMiddleware que criamos é importado e mais robusto.
+function authMiddleware(req, res, next) {
+    if (!req.session.userId) {
+        return res.redirect("/");
+    }
+    next();
+}
+*/
+
 /* ============================================================
-   ➤ LOGIN (Página inicial)
+   ➤ LOGIN (Página inicial)
 ============================================================ */
 viewsRouter.get("/", (req, res) => {
-    res.render("login", {
-        title: "Login",
-        showNavbar: false,
-        errorMessage: null,
-        successMessage: null
-    });
+    // Se o usuário já estiver logado, redireciona para a lista de praias
+    if (req.session.userId) {
+        return res.redirect("/praias");
+    }
+    res.render("login", {
+        title: "Login",
+        showNavbar: false
+    });
 });
 
 /* ============================================================
-   ➤ PROCESSAR LOGIN
+   ➤ PROCESSAR LOGIN (AGORA VIA API/POST, USANDO CONTROLLER)
 ============================================================ */
-viewsRouter.post("/login", async (req, res) => {
-    const { email, senha } = req.body;
+// ❌ A rota POST /login deve ser tratada pelo controller em usuarioRoutes.js (API).
+// Este bloco de código é movido para o usuarioController.js.
 
-    try {
-        const { rows } = await pool.query(
-            "SELECT * FROM usuarios WHERE email = $1",
-            [email]
-        );
+/* ============================================================
+   ➤ LISTAR PRAIAS — PROTEGIDA
+============================================================ */
+// O middleware é chamado como função: authMiddleware()
+viewsRouter.get("/praias", authMiddleware(), async (req, res) => {
+    try {
+        // O listarPraias original usa req/res, precisamos adaptar ou usar o método interno
+        // Vamos assumir uma chamada direta ao DB para as views, já que o listarPraias é um controller API
+        const { rows: praias } = await pool.query(
+            `SELECT 
+              p.*, 
+              u.nome as nome_usuario
+              FROM praias p
+              JOIN usuarios u ON p.id_usuario = u.id_usuario
+              ORDER BY p.data_criacao DESC`
+        );
 
-        if (rows.length === 0) {
-            return res.render("login", {
-                title: "Login",
-                errorMessage: "Usuário não encontrado",
-                showNavbar: false,
-                successMessage: null
-            });
-        }
+        res.render("home", {
+            title: "Praias Brasil",
+            praias,
+            query: req.query
+        });
 
-        const usuario = rows[0];
-        const senhaOk = await bcrypt.compare(senha, usuario.senha_hash);
-
-        if (!senhaOk) {
-            return res.render("login", {
-                title: "Login",
-                errorMessage: "Senha incorreta",
-                showNavbar: false,
-                successMessage: null
-            });
-        }
-
-        req.session.userId = usuario.id_usuario;
-        return res.redirect("/praias");
-
-    } catch (err) {
-        console.error("❌ ERRO LOGIN:", err);
-        return res.render("login", {
-            title: "Login",
-            errorMessage: "Erro interno ao fazer login",
-            showNavbar: false,
-            successMessage: null
-        });
-    }
+    } catch (err) {
+        console.error("❌ ERRO LISTAR PRAIAS (VIEWS):", err);
+        res.locals.errorMessage = "Erro ao carregar praias";
+        return res.render("home", {
+            title: "Praias Brasil",
+            praias: [],
+            query: req.query
+        });
+    }
 });
 
 /* ============================================================
-   ➤ LISTAR PRAIAS — PROTEGIDA
+   ➤ LOGOUT
 ============================================================ */
-viewsRouter.get("/praias", authMiddleware, async (req, res) => {
-    try {
-        const praiasResult = await listarPraias(req, null, true);
-        const praias = praiasResult?.rows || [];
+// ❌ Rota POST /logout deve ser tratada pelo controller em usuarioRoutes.js (API).
+// Nas views, tratamos o clique de logout via formulário POST para a API.
 
-        res.render("home", {
-            title: "Praias Brasil",
-            praias,
-            query: req.query,
-            successMessage: req.session.successMessage,
-            errorMessage: req.session.errorMessage
-        });
-
-        req.session.successMessage = null;
-        req.session.errorMessage = null;
-
-    } catch (err) {
-        console.error("❌ ERRO LISTAR PRAIAS:", err);
-        return res.render("home", {
-            title: "Praias Brasil",
-            praias: [],
-            query: req.query,
-            errorMessage: "Erro ao carregar praias"
-        });
-    }
-});
-
-/* ============================================================
-   ➤ LOGOUT
-============================================================ */
 viewsRouter.get("/logout", (req, res) => {
-    req.session.destroy(() => res.redirect("/"));
+    req.session.destroy(() => res.redirect("/"));
 });
 
 /* ============================================================
-   ➤ FORM DE REGISTRO DE USUÁRIO
+   ➤ FORM DE REGISTRO DE USUÁRIO
 ============================================================ */
 viewsRouter.get("/registrar", (req, res) => {
-    res.render("registrar", {
-        title: "Registrar Conta",
-        showNavbar: false,
-        errorMessage: null
-    });
+    res.render("registrar", {
+        title: "Registrar Conta",
+        showNavbar: false
+    });
 });
 
 /* ============================================================
-   ➤ PROCESSAR REGISTRO DO USUÁRIO
+   ➤ PROCESSAR REGISTRO DO USUÁRIO (AGORA VIA API/POST, USANDO CONTROLLER)
 ============================================================ */
-viewsRouter.post("/registrar", async (req, res) => {
-    const { nome, email, senha } = req.body;
+// ❌ A rota POST /registrar deve ser tratada pelo controller em usuarioRoutes.js (API).
+// Este bloco de código é movido para o usuarioController.js.
 
-    try {
-        const existe = await pool.query(
-            "SELECT * FROM usuarios WHERE email = $1",
-            [email]
-        );
+/* ============================================================
+   ➤ FORM PARA NOVA PRAIA
+============================================================ */
+viewsRouter.get("/praias/nova", authMiddleware(), async (req, res) => { // 👈 authMiddleware()
+    try {
+        const { rows: categorias } = await pool.query("SELECT * FROM categorias ORDER BY nome ASC");
 
-        if (existe.rows.length > 0) {
-            return res.render("registrar", {
-                title: "Registrar Conta",
-                errorMessage: "Este e-mail já está cadastrado!",
-                showNavbar: false
-            });
-        }
+        res.render("praia_cadastro", {
+            title: "Cadastrar Nova Praia",
+            praia: null,
+            categorias
+        });
 
-        const senha_hash = await bcrypt.hash(senha, 10);
-
-        const result = await pool.query(
-            `INSERT INTO usuarios (nome, email, senha_hash, data_criacao, data_atualizacao)
-             VALUES ($1, $2, $3, NOW(), NOW())
-             RETURNING id_usuario`,
-            [nome, email, senha_hash]
-        );
-
-        const novoId = result.rows[0].id_usuario;
-        req.session.userId = novoId;
-
-        return res.redirect("/praias");
-
-    } catch (err) {
-        console.error("❌ ERRO REGISTRO:", err);
-        return res.render("registrar", {
-            title: "Registrar Conta",
-            errorMessage: "Erro ao criar usuário",
-            showNavbar: false
-        });
-    }
+    } catch (err) {
+        console.error("❌ ERRO AO CARREGAR CATEGORIAS:", err);
+        req.session.errorMessage = "Erro ao carregar categorias";
+        return res.redirect("/praias");
+    }
 });
 
 /* ============================================================
-   ➤ FORM PARA NOVA PRAIA
+   ➤ SALVAR NOVA PRAIA (POST)
 ============================================================ */
-viewsRouter.get("/praias/nova", authMiddleware, async (req, res) => {
-    try {
-        const { rows: categorias } = await pool.query("SELECT * FROM categorias ORDER BY nome ASC");
+// ❌ A rota POST /praias/nova deve ser tratada pelo controller em praiaRoutes.js (API).
+// Este bloco de código é movido para o praiaController.js.
 
-        res.render("praia_cadastro", {
-            title: "Cadastrar Nova Praia",
-            praia: null,
-            categorias
-        });
+/* ============================================================
+   ➤ DETALHES DA PRAIA
+============================================================ */
+viewsRouter.get("/praias/:id", authMiddleware(), async (req, res) => { // 👈 authMiddleware()
+    try {
+        let praia = null;
+        // Como views não usam JSON, fazemos a busca direta.
+        const { rows: praiaRows } = await pool.query(
+            `SELECT 
+              p.*, 
+              u.nome as nome_usuario
+              FROM praias p
+              JOIN usuarios u ON p.id_usuario = u.id_usuario
+              WHERE id_praia=$1`,
+            [req.params.id]
+        );
 
-    } catch (err) {
-        console.error("❌ ERRO AO CARREGAR CATEGORIAS:", err);
-        req.session.errorMessage = "Erro ao carregar categorias";
-        return res.redirect("/praias");
-    }
+        if (praiaRows.length === 0) {
+            return res.status(404).render("404", { title: "Praia não encontrada" });
+        }
+        praia = praiaRows[0];
+
+        // Buscamos as categorias
+        const { rows: categorias } = await pool.query(
+            `SELECT c.nome 
+             FROM categorias c
+             JOIN praias_categorias pc ON c.id_categoria = pc.id_categoria
+             WHERE pc.id_praia = $1`,
+            [req.params.id]
+        );
+        praia.categorias = categorias.map(c => c.nome).join(', ');
+
+        // Verifica se o usuário logado é o dono
+        const isOwner = praia.id_usuario === req.session.userId;
+
+        res.render("praia_detalhes", {
+            title: praia.nome,
+            praia,
+            isOwner // Passa a informação se o usuário é o dono
+        });
+
+    } catch (err) {
+        console.error("❌ ERRO DETALHES:", err);
+        return res.status(500).render("500", { title: "Erro interno" });
+    }
 });
 
 /* ============================================================
-   ➤ SALVAR NOVA PRAIA (com validação)
+   ➤ FORM PARA EDITAR PRAIA
 ============================================================ */
-viewsRouter.post("/praias/nova", authMiddleware, async (req, res) => {
-    let { nome, cidade, estado, descricao, foto_url } = req.body;
-    const categorias = Array.isArray(req.body.categorias)
-        ? req.body.categorias
-        : req.body.categorias ? [req.body.categorias] : [];
-    const id_usuario = req.session.userId;
+// ⚠️ Usamos authMiddleware({ ownerOf: "praia" }) para verificar se é o dono
+viewsRouter.get("/praias/:id/editar", authMiddleware({ ownerOf: "praia" }), async (req, res) => {
+    const id_praia = req.params.id;
 
-    // Validação de campos obrigatórios
-    if (!nome || !cidade || !estado) {
-        req.session.errorMessage = "Nome, cidade e estado são obrigatórios!";
-        return res.redirect("/praias/nova");
-    }
+    try {
+        // A verificação de permissão já foi feita pelo middleware ownerOf: "praia"
+        const { rows: praiaRows } = await pool.query(
+            "SELECT * FROM praias WHERE id_praia=$1",
+            [id_praia]
+        );
 
-    descricao = descricao || "";
-    foto_url = foto_url || "";
+        const praia = praiaRows[0];
 
-    const client = await pool.connect();
+        const { rows: categorias } = await pool.query("SELECT * FROM categorias ORDER BY nome ASC");
+        const { rows: categoriasPraia } = await pool.query(
+            "SELECT id_categoria FROM praias_categorias WHERE id_praia=$1",
+            [id_praia]
+        );
+        const categoriasSelecionadas = categoriasPraia.map(c => c.id_categoria);
 
-    try {
-        await client.query("BEGIN");
+        res.render("praia_cadastro", { // Reutilizando a view de cadastro/edição
+            title: `Editar Praia - ${praia.nome}`,
+            praia,
+            categorias,
+            categoriasSelecionadas
+        });
 
-        const result = await client.query(
-            `INSERT INTO praias (nome, cidade, estado, descricao, foto_url, id_usuario, data_criacao, data_atualizacao)
-             VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-             RETURNING id_praia, nome`,
-            [nome, cidade, estado, descricao, foto_url, id_usuario]
-        );
-
-        const novaPraia = result.rows[0];
-
-        for (const idCategoria of categorias) {
-            await client.query(
-                `INSERT INTO praias_categorias (id_praia, id_categoria) VALUES ($1, $2)`,
-                [novaPraia.id_praia, idCategoria]
-            );
-        }
-
-        await client.query("COMMIT");
-
-        req.session.successMessage = `Praia "${novaPraia.nome}" cadastrada com sucesso!`;
-        return res.redirect("/praias");
-
-    } catch (err) {
-        await client.query("ROLLBACK");
-        console.error("❌ ERRO NOVA PRAIA:", err);
-        req.session.errorMessage = "Erro interno ao cadastrar praia";
-        return res.redirect("/praias/nova");
-
-    } finally {
-        client.release();
-    }
+    } catch (err) {
+        console.error("❌ ERRO EDITAR PRAIA:", err);
+        req.session.errorMessage = "Erro ao carregar praia para edição";
+        return res.redirect("/perfil");
+    }
 });
 
 /* ============================================================
-   ➤ DETALHES DA PRAIA
+   ➤ SALVAR EDIÇÃO DA PRAIA (POST)
 ============================================================ */
-viewsRouter.get("/praias/:id", authMiddleware, async (req, res) => {
-    try {
-        let praia = null;
-        const mockRes = { json: (data) => { praia = data; } };
+// ❌ A rota POST /praias/:id/editar deve ser tratada pelo controller em praiaRoutes.js (API).
+// Este bloco de código é movido para o praiaController.js.
 
-        await detalharPraia(req, mockRes);
+/* ============================================================
+   ➤ PÁGINA DE PERFIL DO USUÁRIO
+============================================================ */
+viewsRouter.get("/perfil", authMiddleware(), async (req, res) => { // 👈 authMiddleware()
+    try {
+        const { rows: usuarioRows } = await pool.query(
+            "SELECT id_usuario, nome, email FROM usuarios WHERE id_usuario=$1",
+            [req.session.userId]
+        );
 
-        if (!praia) {
-            return res.status(404).render("404", { title: "Praia não encontrada" });
-        }
+        const usuario = usuarioRows[0];
 
-        res.render("praia_detalhes", {
-            title: praia.nome,
-            praia
-        });
+        const { rows: praias } = await pool.query(
+            "SELECT * FROM praias WHERE id_usuario=$1 ORDER BY nome ASC",
+            [req.session.userId]
+        );
 
-    } catch (err) {
-        console.error("❌ ERRO DETALHES:", err);
-        return res.status(500).render("500", { title: "Erro interno" });
-    }
+        res.render("perfil", {
+            title: "Meu Perfil",
+            usuario,
+            praias
+        });
+
+    } catch (err) {
+        console.error("❌ ERRO PERFIL:", err);
+        req.session.errorMessage = "Erro ao carregar perfil";
+        res.redirect("/praias");
+    }
 });
 
 /* ============================================================
-   ➤ FORM PARA EDITAR PRAIA
+   ➤ EDITAR CONTA
 ============================================================ */
-viewsRouter.get("/praias/:id/editar", authMiddleware, async (req, res) => {
-    const id_praia = req.params.id;
-
-    try {
-        const { rows: praiaRows } = await pool.query(
-            "SELECT * FROM praias WHERE id_praia=$1 AND id_usuario=$2",
-            [id_praia, req.session.userId]
-        );
-
-        if (praiaRows.length === 0) {
-            req.session.errorMessage = "Praia não encontrada ou você não tem permissão.";
-            return res.redirect("/perfil");
-        }
-
-        const praia = praiaRows[0];
-
-        const { rows: categorias } = await pool.query("SELECT * FROM categorias ORDER BY nome ASC");
-        const { rows: categoriasPraia } = await pool.query(
-            "SELECT id_categoria FROM praias_categorias WHERE id_praia=$1",
-            [id_praia]
-        );
-        const categoriasSelecionadas = categoriasPraia.map(c => c.id_categoria);
-
-        res.render("praia_editar", {
-            title: `Editar Praia - ${praia.nome}`,
-            praia,
-            categorias,
-            categoriasSelecionadas,
-            successMessage: req.session.successMessage,
-            errorMessage: req.session.errorMessage
-        });
-
-        req.session.successMessage = null;
-        req.session.errorMessage = null;
-
-    } catch (err) {
-        console.error("❌ ERRO EDITAR PRAIA:", err);
-        req.session.errorMessage = "Erro ao carregar praia para edição";
-        return res.redirect("/perfil");
-    }
-});
+// ❌ A rota POST /perfil/editar deve ser tratada pelo controller em usuarioRoutes.js (API).
+// Este bloco de código é movido para o usuarioController.js.
 
 /* ============================================================
-   ➤ SALVAR EDIÇÃO DA PRAIA (com validação)
+   ➤ EXCLUIR CONTA (com confirmação de senha)
 ============================================================ */
-viewsRouter.post("/praias/:id/editar", authMiddleware, async (req, res) => {
-    const id_praia = req.params.id;
-    let { nome, cidade, estado, descricao, foto_url } = req.body;
-    const categorias = Array.isArray(req.body.categorias)
-        ? req.body.categorias
-        : req.body.categorias ? [req.body.categorias] : [];
+// ⚠️ Usamos authMiddleware({ mustConfirmPassword: true }) para garantir a confirmação de senha
+viewsRouter.post("/perfil/excluir", authMiddleware({ mustConfirmPassword: true }), async (req, res) => {
+    try {
+        // Este código de exclusão deve ser movido para o controller e acessado via rota DELETE /api/usuarios/:id
+        // Mas vamos mantê-lo aqui temporariamente como POST para o fluxo de views/formulário.
 
-    // Validação de campos obrigatórios
-    if (!nome || !cidade || !estado) {
-        req.session.errorMessage = "Nome, cidade e estado são obrigatórios!";
-        return res.redirect(`/praias/${id_praia}/editar`);
-    }
+        // Excluir praias e depois o usuário
+        await pool.query("DELETE FROM praias WHERE id_usuario=$1", [req.session.userId]);
+        await pool.query("DELETE FROM usuarios WHERE id_usuario=$1", [req.session.userId]);
 
-    descricao = descricao || "";
-    foto_url = foto_url || "";
-
-    const client = await pool.connect();
-
-    try {
-        await client.query("BEGIN");
-
-        await client.query(
-            `UPDATE praias 
-             SET nome=$1, cidade=$2, estado=$3, descricao=$4, foto_url=$5, data_atualizacao=NOW()
-             WHERE id_praia=$6 AND id_usuario=$7`,
-            [nome, cidade, estado, descricao, foto_url, id_praia, req.session.userId]
-        );
-
-        await client.query("DELETE FROM praias_categorias WHERE id_praia=$1", [id_praia]);
-
-        for (const idCategoria of categorias) {
-            await client.query(
-                "INSERT INTO praias_categorias (id_praia, id_categoria) VALUES ($1,$2)",
-                [id_praia, idCategoria]
-            );
-        }
-
-        await client.query("COMMIT");
-
-        req.session.successMessage = "Praia atualizada com sucesso!";
-        res.redirect("/perfil");
-
-    } catch (err) {
-        await client.query("ROLLBACK");
-        console.error("❌ ERRO AO ATUALIZAR PRAIA:", err);
-        req.session.errorMessage = "Erro ao atualizar praia";
-        res.redirect(`/praias/${id_praia}/editar`);
-    } finally {
-        client.release();
-    }
-});
-
-/* ============================================================
-   ➤ PÁGINA DE PERFIL DO USUÁRIO
-============================================================ */
-viewsRouter.get("/perfil", authMiddleware, async (req, res) => {
-    try {
-        const { rows: usuarioRows } = await pool.query(
-            "SELECT id_usuario, nome, email FROM usuarios WHERE id_usuario=$1",
-            [req.session.userId]
-        );
-
-        const usuario = usuarioRows[0];
-
-        const { rows: praias } = await pool.query(
-            "SELECT * FROM praias WHERE id_usuario=$1 ORDER BY nome ASC",
-            [req.session.userId]
-        );
-
-        res.render("perfil", {
-            title: "Meu Perfil",
-            usuario,
-            praias,
-            successMessage: req.session.successMessage,
-            errorMessage: req.session.errorMessage
-        });
-
-        req.session.successMessage = null;
-        req.session.errorMessage = null;
-
-    } catch (err) {
-        console.error("❌ ERRO PERFIL:", err);
-        req.session.errorMessage = "Erro ao carregar perfil";
-        res.redirect("/praias");
-    }
-});
-
-/* ============================================================
-   ➤ EDITAR CONTA (CORRIGIDO)
-============================================================ */
-viewsRouter.post("/perfil/editar", authMiddleware, async (req, res) => {
-    const { nome, email, senha } = req.body;
-
-    try {
-        if (senha) {
-            const senha_hash = await bcrypt.hash(senha, 10);
-            await pool.query(
-                `UPDATE usuarios
-                 SET nome=$1, email=$2, senha_hash=$3, data_atualizacao=NOW()
-                 WHERE id_usuario=$4`,
-                [nome, email, senha_hash, req.session.userId]
-            );
-        } else {
-            await pool.query(
-                `UPDATE usuarios
-                 SET nome=$1, email=$2, data_atualizacao=NOW()
-                 WHERE id_usuario=$3`,
-                [nome, email, req.session.userId]
-            );
-        }
-
-        req.session.successMessage = "Conta atualizada com sucesso!";
-        res.redirect("/perfil");
-
-    } catch (err) {
-        console.error("❌ ERRO EDITAR CONTA:", err);
-        req.session.errorMessage = "Erro ao atualizar conta";
-        res.redirect("/perfil");
-    }
-});
-
-/* ============================================================
-   ➤ EXCLUIR CONTA
-============================================================ */
-viewsRouter.post("/perfil/excluir", authMiddleware, async (req, res) => {
-    try {
-        await pool.query("DELETE FROM praias WHERE id_usuario=$1", [req.session.userId]);
-        await pool.query("DELETE FROM usuarios WHERE id_usuario=$1", [req.session.userId]);
-
-        req.session.destroy(() => res.redirect("/"));
-    } catch (err) {
-        console.error("❌ ERRO EXCLUIR CONTA:", err);
-        req.session.errorMessage = "Erro ao excluir conta";
-        res.redirect("/perfil");
-    }
+        req.session.destroy(() => res.redirect("/"));
+    } catch (err) {
+        console.error("❌ ERRO EXCLUIR CONTA:", err);
+        req.session.errorMessage = "Erro ao excluir conta";
+        res.redirect("/perfil");
+    }
 });
 
 export default viewsRouter;
