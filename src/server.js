@@ -27,20 +27,19 @@ const isProduction = process.env.NODE_ENV === "production";
 // ============================================================
 // CONFIGURAÇÃO DO EJS
 // ============================================================
-// Usamos path.resolve() para obter o caminho base do projeto no Render.
-const __dirname = path.resolve(); 
+// Usamos path.resolve() para obter o caminho base do projeto.
+const rootDir = path.resolve(); 
 
-// CORREÇÃO APLICADA AQUI:
-// Se sua estrutura de pastas é:
-// - project-root/
-//   - src/
-//     - views/ (Onde estão os arquivos ejs)
-// Você deve remover o __dirname, pois ele pode já apontar para 'project-root/src'
-// Ou usar path.join(__dirname, 'views') se 'project-root' for o root do git
-// Vamos usar a forma mais robusta com require.main.path ou usar o caminho corrigido:
+// CORREÇÃO: Usamos o caminho absoluto com base na estrutura de pastas (/src/views).
+// Se o Render define a raiz como o diretório superior ao 'src', o caminho deve incluir 'src'.
+// Se a pasta views está DENTRO de 'src', e 'src' NÃO é a raiz do deploy:
+// app.set("views", path.join(rootDir, "src", "views")); // Forma original que deu erro
+// Se a pasta views está DENTRO de 'src', e 'src' É a raiz do deploy:
+// app.set("views", path.join(rootDir, "views")); // Forma anterior que tentamos
 
-// Se a pasta 'views' está DENTRO de 'src', e 'src' é a raiz no Render:
-app.set("views", path.join(__dirname, "views")); // Corrigido para funcionar no Render
+// Aplicando a forma que resolve com a raiz do arquivo 'server.js' (que está em src):
+app.set("views", path.join(path.dirname(new URL(import.meta.url).pathname), "views"));
+
 app.set("view engine", "ejs");
 
 // Layout principal
@@ -48,7 +47,8 @@ app.use(expressLayouts);
 app.set("layout", "layouts/main");
 
 // Pasta pública
-app.use(express.static(path.join(__dirname, "public")));
+// Ajustando a pasta public para ser encontrada no mesmo nível que views, dentro de src
+app.use(express.static(path.join(path.dirname(new URL(import.meta.url).pathname), "public")));
 
 // ============================================================
 // CONFIGURAÇÃO DO CORS
