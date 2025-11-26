@@ -177,4 +177,16 @@ enilda@email.com
 
 ALTER TABLE praias
 ADD COLUMN data_criacao TIMESTAMP DEFAULT NOW(),
+
 ADD COLUMN data_atualizacao TIMESTAMP DEFAULT NOW();
+
+CREATE TABLE comentarios (
+    id_comentario SERIAL PRIMARY KEY,
+    id_praia INT NOT NULL,
+    id_usuario INT NOT NULL,
+    texto TEXT NOT NULL,
+    data_criacao TIMESTAMP NOT NULL DEFAULT NOW(),
+
+    FOREIGN KEY (id_praia) REFERENCES praias (id_praia) ON DELETE CASCADE,
+    FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario) ON DELETE CASCADE
+);
