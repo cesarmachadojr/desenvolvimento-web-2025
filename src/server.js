@@ -2,7 +2,6 @@
 import express from "express";
 import dotenv from "dotenv";
 import path from "path";
-import { fileURLToPath } from "url";
 import expressLayouts from "express-ejs-layouts";
 import session from "express-session";
 import cookieParser from "cookie-parser";
@@ -22,15 +21,10 @@ dotenv.config();
 const app = express();
 
 // ============================================================
-// CORREÇÃO DO __dirname PARA ES MODULES
-// ============================================================
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// ============================================================
 // CONFIGURAÇÃO DO EJS
 // ============================================================
-app.set("views", path.join(__dirname, "views"));
+const __dirname = path.resolve();
+app.set("views", path.join(__dirname, "src", "views"));
 app.set("view engine", "ejs");
 
 // Layout principal
@@ -38,7 +32,7 @@ app.use(expressLayouts);
 app.set("layout", "layouts/main");
 
 // Pasta pública
-app.use(express.static(path.join(__dirname, "..", "public")));
+app.use(express.static(path.join(__dirname, "public")));
 
 // ============================================================
 // MIDDLEWARES
@@ -50,25 +44,24 @@ app.use(cookieParser());
 // ============================================================
 // SESSÃO
 // ============================================================
-app.use(
-    session({
-        secret: process.env.SESSION_SECRET || "supersecretkey",
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            secure: false, // Render Free não usa HTTPS nativo
-            httpOnly: true,
-            maxAge: 1000 * 60 * 60 // 1 hora
-        }
-    })
-);
+app.use(session({
+    secret: process.env.SESSION_SECRET || "supersecretkey",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false, // true somente em HTTPS
+        httpOnly: true,
+        maxAge: 1000 * 60 * 60 // 1 hora
+    }
+}));
 
 // ============================================================
-// CSRF — APLICAR SOMENTE PARA PÁGINAS (Views)
+// CSRF — SOMENTE PARA ROTAS DE VIEWS
 // ============================================================
 const csrfProtection = csrf({ cookie: true });
 
 app.use((req, res, next) => {
+    // Aplicar CSRF somente nas rotas de Views (não API)
     if (!req.originalUrl.startsWith("/api")) {
         return csrfProtection(req, res, next);
     }
@@ -79,14 +72,17 @@ app.use((req, res, next) => {
 // VARIÁVEIS GLOBAIS PARA VIEWS
 // ============================================================
 app.use((req, res, next) => {
+    // Se o usuário está logado
     res.locals.usuarioLogado = !!req.session.userId;
 
+    // csrfToken (evita crash nas rotas sem CSRF)
     try {
         res.locals.csrfToken = req.csrfToken ? req.csrfToken() : "";
     } catch {
         res.locals.csrfToken = "";
     }
 
+    // Flash messages
     res.locals.successMessage = req.session.successMessage || null;
     res.locals.errorMessage = req.session.errorMessage || null;
 
@@ -113,7 +109,6 @@ app.use("/api/avaliacoes", avaliacaoRoutes);
 
 // ============================================================
 // ROTAS SSR (PÁGINAS)
-// ============================================================
 app.use("/", viewsRouter);
 
 // ============================================================
@@ -121,9 +116,7 @@ app.use("/", viewsRouter);
 // ============================================================
 app.use((req, res) => {
     if (req.originalUrl.startsWith("/api")) {
-        return res.status(404).json({
-            error: "Rota da API não encontrada."
-        });
+        return res.status(404).json({ error: "Rota da API não encontrada." });
     }
 
     res.status(404).render("404", {
@@ -133,19 +126,18 @@ app.use((req, res) => {
 });
 
 // ============================================================
-// INICIAR SERVIDOR (Render usa process.env.PORT)
+// INICIAR SERVIDOR
 // ============================================================
 const PORT = process.env.PORT || 3000;
 
 const start = async () => {
     try {
         await testConnection();
-
-        app.listen(PORT, "0.0.0.0", () => {
-            console.log(`🚀 Servidor online → Porta ${PORT}`);
-        });
+        app.listen(PORT, "0.0.0.0", () =>
+            console.log(`Servidor rodando: http://localhost:${PORT}`)
+        );
     } catch (err) {
-        console.error("❌ Falha ao iniciar o servidor:", err.message);
+        console.error("Falha ao iniciar o servidor:", err.message);
         process.exit(1);
     }
 };
