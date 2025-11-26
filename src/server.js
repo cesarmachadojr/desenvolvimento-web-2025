@@ -20,6 +20,10 @@ import viewsRouter from "./routes/viewsRouter.js";
 dotenv.config();
 const app = express();
 
+// ** 1. VARIÁVEIS DE AMBIENTE E AMBIENTE **
+// O Render define NODE_ENV como 'production'
+const isProduction = process.env.NODE_ENV === "production";
+
 // ============================================================
 // CONFIGURAÇÃO DO EJS
 // ============================================================
@@ -44,12 +48,18 @@ app.use(cookieParser());
 // ============================================================
 // SESSÃO
 // ============================================================
+// ** ALTERAÇÃO 1: Adicionar trust proxy para o Render (necessário para cookies seguros)**
+if (isProduction) {
+    app.set('trust proxy', 1);
+}
+
 app.use(session({
     secret: process.env.SESSION_SECRET || "supersecretkey",
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false, // true somente em HTTPS
+        // ** ALTERAÇÃO 2: Usa secure: true em produção (HTTPS no Render)**
+        secure: isProduction, 
         httpOnly: true,
         maxAge: 1000 * 60 * 60 // 1 hora
     }
@@ -133,8 +143,10 @@ const PORT = process.env.PORT || 3000;
 const start = async () => {
     try {
         await testConnection();
+        // O Render usa 0.0.0.0 para rodar o servidor, mas a mensagem de log deve ser genérica
         app.listen(PORT, "0.0.0.0", () =>
-            console.log(`Servidor rodando: http://localhost:${PORT}`)
+            // ** ALTERAÇÃO 3: Remove localhost da mensagem, pois a URL é pública **
+            console.log(`Servidor rodando na porta ${PORT} (${isProduction ? 'Produção' : 'Desenvolvimento'})`)
         );
     } catch (err) {
         console.error("Falha ao iniciar o servidor:", err.message);
