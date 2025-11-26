@@ -7,7 +7,7 @@
     <div class="space-y-4">
 
         <p>
-            <strong>UF:</strong> <%= praia.uf %>
+            <strong>Estado (UF):</strong> <%= praia.estado %>
         </p>
 
         <p>
@@ -19,13 +19,15 @@
             <%= praia.descricao %>
         </p>
 
+        <% if (praia.nota) { %>
         <p>
             <strong>Nota:</strong> <%= praia.nota %> / 10
         </p>
+        <% } %>
 
-        <% if (praia.imagem_url) { %>
+        <% if (praia.foto_url) { %>
             <img 
-                src="<%= praia.imagem_url %>" 
+                src="<%= praia.foto_url %>" 
                 alt="Imagem da praia" 
                 class="mt-4 w-full rounded-lg shadow"
             >
@@ -33,17 +35,11 @@
 
     </div>
 
-    <div class="mt-8 flex gap-4">
+    <div class="mt-8 flex">
 
         <a href="/praias" 
             class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-900 transition">
             Voltar
-        </a>
-
-        <a 
-            href="/praias/<%= praia.id %>/editar" 
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-800 transition">
-            Editar Praia
         </a>
 
     </div>
