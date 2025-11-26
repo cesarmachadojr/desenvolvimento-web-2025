@@ -1,196 +1,165 @@
+// src/controllers/usuarioController.js (VERSÃO REVISADA COM AUTENTICAÇÃO)
 import { pool } from "../db.js";
-import bcrypt from "bcrypt";
+import bcrypt from 'bcrypt'; // 👈 NOVO: Importar o bcrypt para hash de senhas
 
-/* ============================================================
-   ➤ LISTAR USUÁRIOS
-   ============================================================ */
+// --- Listar todos os usuários (Mantido) ---
 export const listarUsuarios = async (req, res) => {
-    try {
-        const result = await pool.query(
-            `SELECT id_usuario, nome, email, foto_perfil, bio, data_criacao, data_atualizacao
-             FROM usuarios
-             ORDER BY id_usuario DESC`
-        );
-
-        res.json(result.rows);
-
-    } catch (err) {
-        console.error("Erro ao buscar usuários:", err.message);
-        res.status(500).json({ error: "Erro interno do servidor" });
-    }
+    try {
+        const result = await pool.query("SELECT id_usuario, nome, email, foto_perfil, bio, data_criacao, data_atualizacao FROM usuarios ORDER BY id_usuario DESC");
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Erro ao buscar usuários:", err.message);
+        res.status(500).json({ error: "Erro interno do servidor" });
+    }
 };
 
-/* ============================================================
-   ➤ CRIAR USUÁRIO (REGISTRO) — COM HASH DE SENHA
-   ============================================================ */
+// --- Criar um novo usuário (COM HASH DE SENHA) ---
 export const criarUsuario = async (req, res) => {
-    const { nome, email, senha, foto_perfil, bio } = req.body;
+    // ⚠️ Mude 'senha_hash' para 'senha' (recebe a senha em texto do formulário/cliente)
+    const { nome, email, senha, foto_perfil, bio } = req.body; 
 
-    if (!nome || !email || !senha) {
-        return res.status(400).json({ error: "Nome, email e senha são obrigatórios." });
-    }
+    // Validação de entrada
+    if (!nome || !email || !senha) { // Verifique 'senha', não 'senha_hash'
+        return res.status(400).json({ error: "Nome, email e senha são obrigatórios." });
+    }
 
-    try {
-        const senha_hash = await bcrypt.hash(senha, 10);
+    try {
+        // 1. Gerar o hash da senha (SALT é o padrão 10)
+        const saltRounds = 10;
+        const senha_hash = await bcrypt.hash(senha, saltRounds); // 👈 HASH DA SENHA
 
-        const result = await pool.query(
-            `INSERT INTO usuarios 
-             (nome, email, senha_hash, foto_perfil, bio, data_criacao, data_atualizacao)
-             VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-             RETURNING id_usuario, nome, email`,
-            [nome, email, senha_hash, foto_perfil || null, bio || null]
-        );
+        // 2. Inserir no banco, usando o hash gerado
+        const result = await pool.query(
+            "INSERT INTO usuarios (nome, email, senha_hash, foto_perfil, bio, data_criacao, data_atualizacao) VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING id_usuario, nome, email",
+            [nome, email, senha_hash, foto_perfil, bio] // Usa o hash
+        );
+        
+        // Em um projeto SSR, após o registro, você poderia redirecionar para a página de login.
+        res.status(201).json({ 
+            message: "Usuário criado com sucesso! Faça login.", 
+            usuario: result.rows[0]
+        }); 
 
-        // Criar sessão automaticamente após registro
-        if (req.session) {
-            req.session.userId = result.rows[0].id_usuario;
-        }
-
-        return res.status(201).json({
-            message: "Usuário criado com sucesso!",
-            usuario: result.rows[0]
-        });
-
-    } catch (err) {
-        console.error("Erro ao criar usuário:", err.message);
-
-        if (err.code === "23505") { // Violação de UNIQUE (email)
-            return res.status(409).json({ error: "Este email já está cadastrado." });
-        }
-
-        return res.status(500).json({ error: "Erro interno do servidor" });
-    }
+    } catch (err) {
+        console.error("Erro ao criar usuário:", err.message);
+        if (err.code === '23505') { // Violação de constraint UNIQUE (email duplicado)
+            return res.status(409).json({ error: 'Este email já está cadastrado.' });
+        }
+        res.status(500).json({ error: "Erro interno do servidor" });
+    }
 };
 
-/* ============================================================
-   ➤ LOGIN (AUTENTICAÇÃO)
-   ============================================================ */
+// --- LOGAR NO SISTEMA (NOVO) ---
 export const login = async (req, res) => {
-    const { email, senha } = req.body;
+    const { email, senha } = req.body;
+    
+    if (!email || !senha) {
+        return res.status(400).json({ error: "Email e senha são obrigatórios." });
+    }
 
-    if (!email || !senha) {
-        return res.status(400).json({ error: "Email e senha são obrigatórios." });
-    }
+    try {
+        // 1. Buscar usuário pelo email
+        const result = await pool.query("SELECT id_usuario, nome, senha_hash FROM usuarios WHERE email = $1", [email]);
+        const user = result.rows[0];
 
-    try {
-        const result = await pool.query(
-            "SELECT id_usuario, nome, senha_hash FROM usuarios WHERE email = $1",
-            [email]
-        );
+        if (!user) {
+            return res.status(401).json({ error: "Credenciais inválidas (Email não encontrado)." });
+        }
 
-        const usuario = result.rows[0];
+        // 2. Comparar a senha fornecida com o hash do banco
+        const match = await bcrypt.compare(senha, user.senha_hash);
 
-        if (!usuario) {
-            return res.status(401).json({ error: "Credenciais inválidas (email não encontrado)." });
-        }
+        if (match) {
+            // 3. Criar a sessão: Salva o ID do usuário na sessão (req.session é fornecido pelo express-session)
+            req.session.userId = user.id_usuario;
+            // Em SSR: res.redirect('/home'); ou res.redirect('/praias');
+            res.status(200).json({ 
+                message: `Bem-vindo(a), ${user.nome}! Login realizado com sucesso!`, 
+                userId: user.id_usuario 
+            }); 
+        } else {
+            res.status(401).json({ error: "Credenciais inválidas (Senha incorreta)." });
+        }
 
-        const senhaOk = await bcrypt.compare(senha, usuario.senha_hash);
-
-        if (!senhaOk) {
-            return res.status(401).json({ error: "Credenciais inválidas (senha incorreta)." });
-        }
-
-        // Criar a sessão
-        if (req.session) {
-            req.session.userId = usuario.id_usuario;
-        }
-
-        return res.status(200).json({
-            message: `Bem-vindo(a), ${usuario.nome}!`,
-            userId: usuario.id_usuario
-        });
-
-    } catch (err) {
-        console.error("Erro no login:", err.message);
-        return res.status(500).json({ error: "Erro interno do servidor" });
-    }
+    } catch (err) {
+        console.error("Erro no login:", err.message);
+        res.status(500).json({ error: "Erro interno do servidor" });
+    }
 };
 
-/* ============================================================
-   ➤ LOGOUT
-   ============================================================ */
+// --- DESLOGAR DO SISTEMA (NOVO) ---
 export const logout = (req, res) => {
-    if (!req.session) return res.status(400).json({ error: "Sessão não encontrada." });
-
-    req.session.destroy(err => {
-        if (err) {
-            return res.status(500).json({ error: "Não foi possível deslogar." });
-        }
-        return res.status(200).json({ message: "Logout realizado com sucesso!" });
-    });
+    // Destrói a sessão, removendo o userId e forçando o logout
+    req.session.destroy(err => {
+        if (err) {
+            return res.status(500).json({ error: "Não foi possível deslogar." });
+        }
+        // Em SSR: res.redirect('/');
+        res.status(200).json({ message: "Logout realizado com sucesso!" }); 
+    });
 };
 
-/* ============================================================
-   ➤ ATUALIZAR USUÁRIO (EDITAR PERFIL)
-   ============================================================ */
+// --- Atualizar um usuário (Mantenha as modificações, mas atenção ao hash se for trocar a senha) ---
 export const atualizarUsuario = async (req, res) => {
-    const { id } = req.params;
-    const { nome, email, senha, foto_perfil, bio } = req.body;
+    const { id } = req.params;
+    const { nome, email, senha, foto_perfil, bio } = req.body; // ⚠️ Pegue 'senha' em vez de 'senha_hash'
 
-    const updates = [];
-    const values = [];
-    let idx = 1;
+    // Lógica para construir a query de UPDATE dinamicamente
+    const updates = [];
+    const values = [];
+    let idx = 1;
 
-    if (nome) { updates.push(`nome = $${idx++}`); values.push(nome); }
-    if (email) { updates.push(`email = $${idx++}`); values.push(email); }
-    if (senha) {
-        const senha_hash = await bcrypt.hash(senha, 10);
-        updates.push(`senha_hash = $${idx++}`);
-        values.push(senha_hash);
-    }
-    if (foto_perfil !== undefined) { updates.push(`foto_perfil = $${idx++}`); values.push(foto_perfil); }
-    if (bio !== undefined) { updates.push(`bio = $${idx++}`); values.push(bio); }
+    if (nome) { updates.push(`nome = $${idx++}`); values.push(nome); }
+    if (email) { updates.push(`email = $${idx++}`); values.push(email); }
+    
+    // ⚠️ Se a senha for fornecida, faça o hash antes de atualizar!
+    if (senha) { 
+        try {
+            const saltRounds = 10;
+            const senha_hash = await bcrypt.hash(senha, saltRounds);
+            updates.push(`senha_hash = $${idx++}`); 
+            values.push(senha_hash); 
+        } catch (error) {
+            console.error("Erro ao gerar hash para atualização:", error);
+            return res.status(500).json({ error: "Erro ao processar a nova senha." });
+        }
+    }
 
-    if (updates.length === 0) {
-        return res.status(400).json({ error: "Nenhum campo fornecido para atualização." });
-    }
+    if (foto_perfil) { updates.push(`foto_perfil = $${idx++}`); values.push(foto_perfil); }
+    if (bio !== undefined) { updates.push(`bio = $${idx++}`); values.push(bio); }
 
-    updates.push("data_atualizacao = NOW()");
-    values.push(id);
+    if (updates.length === 0) {
+        return res.status(400).json({ error: "Nenhum campo fornecido para atualização." });
+    }
 
-    try {
-        const result = await pool.query(
-            `UPDATE usuarios SET ${updates.join(", ")} WHERE id_usuario = $${idx} RETURNING id_usuario, nome, email`,
-            values
-        );
+    updates.push(`data_atualizacao = NOW()`);
+    values.push(id);
 
-        if (result.rowCount === 0) {
-            return res.status(404).json({ error: "Usuário não encontrado." });
-        }
+    const query = `UPDATE usuarios SET ${updates.join(", ")} WHERE id_usuario = $${idx} RETURNING id_usuario, nome, email`;
 
-        return res.json(result.rows[0]);
-
-    } catch (err) {
-        console.error("Erro ao atualizar usuário:", err.message);
-
-        if (err.code === "23505") { // email duplicado
-            return res.status(409).json({ error: "Este email já está em uso." });
-        }
-
-        return res.status(500).json({ error: "Erro interno do servidor" });
-    }
+    try {
+        const result = await pool.query(query, values);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Usuário não encontrado." });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error("Erro ao atualizar usuário:", err.message);
+        res.status(500).json({ error: "Erro interno do servidor" });
+    }
 };
 
-/* ============================================================
-   ➤ DELETAR USUÁRIO
-   ============================================================ */
+// --- Deletar um usuário (Mantido) ---
 export const deletarUsuario = async (req, res) => {
-    const { id } = req.params;
-
-    try {
-        const result = await pool.query(
-            "DELETE FROM usuarios WHERE id_usuario = $1",
-            [id]
-        );
-
-        if (result.rowCount === 0) {
-            return res.status(404).json({ error: "Usuário não encontrado." });
-        }
-
-        return res.status(204).send();
-
-    } catch (err) {
-        console.error("Erro ao deletar usuário:", err.message);
-        return res.status(500).json({ error: "Erro interno do servidor" });
-    }
+    const { id } = req.params;
+    try {
+        const result = await pool.query("DELETE FROM usuarios WHERE id_usuario = $1", [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Usuário não encontrado." });
+        }
+        res.status(204).send();
+    } catch (err) {
+        console.error("Erro ao deletar usuário:", err.message);
+        res.status(500).json({ error: "Erro interno do servidor" });
+    }
 };
