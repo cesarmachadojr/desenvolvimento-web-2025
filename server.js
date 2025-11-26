@@ -27,8 +27,20 @@ const isProduction = process.env.NODE_ENV === "production";
 // ============================================================
 // CONFIGURAÇÃO DO EJS
 // ============================================================
-const __dirname = path.resolve();
-app.set("views", path.join(__dirname, "src", "views"));
+// Usamos path.resolve() para obter o caminho base do projeto no Render.
+const __dirname = path.resolve(); 
+
+// CORREÇÃO APLICADA AQUI:
+// Se sua estrutura de pastas é:
+// - project-root/
+//   - src/
+//     - views/ (Onde estão os arquivos ejs)
+// Você deve remover o __dirname, pois ele pode já apontar para 'project-root/src'
+// Ou usar path.join(__dirname, 'views') se 'project-root' for o root do git
+// Vamos usar a forma mais robusta com require.main.path ou usar o caminho corrigido:
+
+// Se a pasta 'views' está DENTRO de 'src', e 'src' é a raiz no Render:
+app.set("views", path.join(__dirname, "views")); // Corrigido para funcionar no Render
 app.set("view engine", "ejs");
 
 // Layout principal
