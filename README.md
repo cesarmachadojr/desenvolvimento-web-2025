@@ -59,7 +59,7 @@ Critérios de aceite:
   * Cada praia pode ser clicada/expandida para mostrar detalhes e avaliação na mesma tela
 * Perfil do usuário (avaliações feitas, praias cadastradas)
   \[Links ou imagens dos seus rascunhos de telas aqui]
-![Fluxo Secundário](imgs/modelos_das_telas.png)
+![Esboço de Algumas Telas](imgs/modelo.excalidraw)
 
 ## 8) Tecnologias
 
@@ -138,6 +138,7 @@ Critérios de aceite:
 * Um Usuario pode cadastrar muitas Praias (1→N)
 * Uma Praia tem muitas Avaliacoes (1→N)
 * Uma Praia pode ter muitas Categorias (N→N via tabela associativa Praia\_Categoria)
+
 
 
 
