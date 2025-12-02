@@ -139,6 +139,24 @@ Critérios de aceite:
 * Uma Praia tem muitas Avaliacoes (1→N)
 * Uma Praia pode ter muitas Categorias (N→N via tabela associativa Praia\_Categoria)
 
+## 10) Fluxo principal e primeira fatia
+**Fluxo principal (curto):**  
+
+![Fluxo Principal](imgs/fluxoPrincipal.png)
+
+**Fluxo secundário (longo):**  
+
+![Fluxo Secundário](imgs/fluxo_longo.png)
+
+**Primeira fatia vertical (escopo mínimo):**  
+Inclui: cadastro/login, criar post, listar posts
+Critérios de aceite:
+- Criar post → aparece na timeline
+- Post temporário → some após tempo definido
+- Cadastro → usuário pode logar em seguida
+
+
+
 
 
 
