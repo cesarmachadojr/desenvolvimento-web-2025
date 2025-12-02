@@ -146,14 +146,10 @@ Critérios de aceite:
 
 **Fluxo secundário (longo):**  
 
-![Fluxo Secundário](imgs/fluxo_longo.png)
+![Fluxo Secundário](imgs/fluxoSecundario.png)
 
-**Primeira fatia vertical (escopo mínimo):**  
-Inclui: cadastro/login, criar post, listar posts
-Critérios de aceite:
-- Criar post → aparece na timeline
-- Post temporário → some após tempo definido
-- Cadastro → usuário pode logar em seguida
+
+
 
 
 
