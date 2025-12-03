@@ -1,4 +1,5 @@
 // src/middlewares/authMiddleware.js
+import bcrypt from "bcrypt";
 import { pool } from "../db.js";
 
 export const authMiddleware = (options = {}) => {
@@ -78,3 +79,4 @@ export const authMiddleware = (options = {}) => {
         next();
     };
 };
+
