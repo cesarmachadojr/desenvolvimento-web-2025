@@ -190,3 +190,6 @@ CREATE TABLE comentarios (
     FOREIGN KEY (id_praia) REFERENCES praias (id_praia) ON DELETE CASCADE,
     FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario) ON DELETE CASCADE
 );
+
+SELECT * FROM usuarios;
+
