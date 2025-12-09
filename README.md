@@ -230,11 +230,7 @@ Critérios de aceite:
 
      -- DADOS DE EXEMPLO (POPULAÇÃO)
 
-     -- 1. Inserir Usuários (senha_hash é um placeholder para esta fase)
-    INSERT INTO usuarios (nome, email, senha_hash, foto_perfil, data_criacao, data_atualizacao) VALUES
-    ('Ana Paula', 'ana.paula@exemplo.com', 'hash_ana_123', NULL, NOW(), NOW()),
-     ('Bruno Silva', 'bruno.silva@exemplo.com', 'hash_bruno_456', NULL, NOW(), NOW()),
-     ('Carla Souza', 'carla.souza@exemplo.com', 'hash_carla_789', NULL, NOW(), NOW());
+
 
       -- 2. Inserir Praias
      INSERT INTO praias (nome, cidade, estado, descricao, foto_url, media_avaliacao) VALUES
@@ -301,6 +297,7 @@ Critérios de aceite:
     FOREIGN KEY (id_praia) REFERENCES praias (id_praia) ON DELETE CASCADE,
     FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario) ON DELETE CASCADE
 );
+
 
 
 
