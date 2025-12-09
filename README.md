@@ -148,6 +148,10 @@ Critérios de aceite:
 * Uma Praia tem muitas Avaliacoes (1→N)
 * Uma Praia pode ter muitas Categorias (N→N via tabela associativa Praia\_Categoria)
 
+![Relação das Entidades](imgs/relaçãoEntidades.png)
+
+
+
 
 
 
