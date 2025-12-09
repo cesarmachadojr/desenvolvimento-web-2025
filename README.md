@@ -91,7 +91,7 @@ Critérios de aceite:
 
 **Integração das Tecnologias:**  
 
-![Integração das Tecnoligias](imgs/integraçãoTecnologias.png)
+![Integração das Tecnologias](imgs/integraçãoTecnlogias.png)
 
 ## 9) Plano de Dados (Dia 0) — somente itens 1–3
 
@@ -153,6 +153,7 @@ Critérios de aceite:
 * Uma Praia pode ter muitas Categorias (N→N via tabela associativa Praia\_Categoria)
 
 ![Relação das Entidades](imgs/relaçãoEntidades.png)
+
 
 
 
