@@ -50,6 +50,15 @@ Critérios de aceite:
 * Lista de praias aparece apenas para a localização selecionada
 * Avaliação criada aparece imediatamente no ranking
 
+**Fluxo principal (curto):**  
+
+![Fluxo Principal](imgs/fluxoPrincipal.png)
+
+**Fluxo secundário (longo):**  
+
+![Fluxo Secundário](imgs/fluxoSecundario.png)
+
+
 ## 7) Esboços de algumas telas (wireframes) (atualizado)
 
 
@@ -139,14 +148,7 @@ Critérios de aceite:
 * Uma Praia tem muitas Avaliacoes (1→N)
 * Uma Praia pode ter muitas Categorias (N→N via tabela associativa Praia\_Categoria)
 
-## 10) Fluxo principal e primeira fatia
-**Fluxo principal (curto):**  
 
-![Fluxo Principal](imgs/fluxoPrincipal.png)
-
-**Fluxo secundário (longo):**  
-
-![Fluxo Secundário](imgs/fluxoSecundario.png)
 
 
 
