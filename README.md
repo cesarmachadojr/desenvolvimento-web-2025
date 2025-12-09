@@ -89,6 +89,10 @@ Critérios de aceite:
 **Banco de dados:** PostgreSQL ou MongoDB
 **Deploy do back-end:** Render ou Railway
 
+**Integração das Tecnologias:**  
+
+![Integração das Tecnoligias](imgs/integraçãoTecnologias.png)
+
 ## 9) Plano de Dados (Dia 0) — somente itens 1–3
 
 ### 9.1 Entidades
@@ -149,6 +153,7 @@ Critérios de aceite:
 * Uma Praia pode ter muitas Categorias (N→N via tabela associativa Praia\_Categoria)
 
 ![Relação das Entidades](imgs/relaçãoEntidades.png)
+
 
 
 
