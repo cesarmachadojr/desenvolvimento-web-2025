@@ -205,7 +205,7 @@ export const atualizarPraia = async (req, res) => {
 };
 
 /* ============================================================
-   DELETAR PRAIA
+   DELETAR PRAIA (Corrigido para redirecionar ao Perfil)
 ============================================================ */
 export const deletarPraia = async (req, res) => {
     const { id } = req.params;
@@ -213,7 +213,7 @@ export const deletarPraia = async (req, res) => {
     const client = await pool.connect();
 
     try {
-        // Verifica se a praia pertence ao usuário logado
+        // 1. Verifica se a praia existe e pertence ao usuário logado
         const check = await client.query(
             "SELECT * FROM praias WHERE id_praia = $1 AND id_usuario = $2",
             [id, id_usuario]
@@ -221,26 +221,44 @@ export const deletarPraia = async (req, res) => {
 
         if (check.rowCount === 0) {
             client.release();
+            // Se for navegador (tem sessão), volta para o Perfil
+            if (req.session) {
+                req.session.errorMessage = "Você não tem permissão para excluir esta praia.";
+                return res.redirect("/perfil"); 
+            }
+            // Se for API
             return res.status(403).json({ error: "Não autorizado a deletar esta praia." });
         }
 
         await client.query("BEGIN");
 
+        // 2. Remove dependências (Avaliações e Categorias)
         await client.query("DELETE FROM avaliacoes WHERE id_praia = $1", [id]);
         await client.query("DELETE FROM praias_categorias WHERE id_praia = $1", [id]);
 
-        const result = await client.query(
-            "DELETE FROM praias WHERE id_praia = $1 RETURNING *",
-            [id]
-        );
+        // 3. Deleta a praia
+        await client.query("DELETE FROM praias WHERE id_praia = $1", [id]);
 
         await client.query("COMMIT");
+
+        // 4. Feedback e Redirecionamento para o PERFIL
+        if (req.session) {
+            req.session.successMessage = "Praia excluída com sucesso!";
+            return res.redirect("/perfil");
+        }
 
         return res.status(204).send();
 
     } catch (err) {
         await client.query("ROLLBACK");
         console.error("Erro ao deletar praia:", err.message);
+        
+        // Em caso de erro, volta para o Perfil também
+        if (req.session) {
+            req.session.errorMessage = "Erro interno ao tentar excluir a praia.";
+            return res.redirect("/perfil");
+        }
+
         return res.status(500).json({ error: "Erro interno ao deletar praia." });
 
     } finally {

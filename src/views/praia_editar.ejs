@@ -3,7 +3,6 @@
     <h1 class="text-3xl font-bold mb-6">Editar Praia</h1>
 
     <form action="/praias/<%= praia.id_praia %>/editar" method="POST" class="space-y-6">
-        <!-- CSRF Token -->
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
         <div>
@@ -78,12 +77,27 @@
             class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-800 transition">
             Salvar Alterações
         </button>
-
-        <a 
-            href="/praias/<%= praia.id_praia %>"
-            class="block text-center mt-4 text-gray-700 hover:underline">
-            Cancelar
-        </a>
-
     </form>
+
+    <form 
+        action="/praias/<%= praia.id_praia %>/deletar" 
+        method="POST" 
+        class="mt-4"
+        onsubmit="return confirm('Tem certeza que deseja excluir esta praia? Esta ação não pode ser desfeita.');"
+    >
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        
+        <button
+            type="submit"
+            class="w-full bg-red-600 text-white p-3 rounded-lg hover:bg-red-800 transition">
+            Excluir Praia
+        </button>
+    </form>
+
+    <a 
+        href="/praias/<%= praia.id_praia %>"
+        class="block text-center mt-4 text-gray-700 hover:underline">
+        Cancelar
+    </a>
+
 </div>

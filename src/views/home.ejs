@@ -3,7 +3,6 @@
     <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Descubra as Melhores Praias</h1>
     <p class="text-xl text-gray-600 mb-8">Encontre o seu próximo destino de areia e mar!</p>
 
-    <!-- MENSAGENS -->
     <% if (successMessage) { %>
         <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6" role="alert">
             <p class="font-bold">Sucesso!</p>
@@ -18,7 +17,6 @@
         </div>
     <% } %>
 
-    <!-- FILTRO -->
     <div class="bg-white p-6 rounded-xl shadow-lg mb-10">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Filtrar Praias</h3>
 
@@ -52,7 +50,6 @@
         </form>
     </div>
 
-    <!-- LISTA DE PRAIAS -->
     <% if (!praias || praias.length === 0) { %>
 
         <div class="text-center py-10 bg-white rounded-xl shadow-lg">
@@ -65,7 +62,7 @@
 
             <% praias.forEach(praia => { %>
 
-                <div class="bg-white rounded-xl shadow-xl overflow-hidden hover:shadow-2xl transition transform hover:-translate-y-1">
+                <div class="bg-white rounded-xl shadow-xl overflow-hidden hover:shadow-2xl transition transform hover:-translate-y-1 flex flex-col">
 
                     <div class="h-48 bg-gray-200">
                         <img src="<%= praia.foto_url || 'https://placehold.co/600x400/005a9c/ffffff?text=Praia+Sem+Foto' %>"
@@ -74,41 +71,17 @@
                         class="w-full h-full object-cover">
                     </div>
 
-                    <div class="p-5">
+                    <div class="p-5 flex flex-col flex-grow">
                         <h2 class="text-xl font-bold text-gray-900 mb-2 truncate">
                             <%= praia.nome %>
                         </h2>
 
-                        <p class="text-sm text-gray-500 mb-3">
+                        <p class="text-sm text-gray-500 mb-6 flex-grow">
                             <%= praia.cidade %> - <%= praia.estado %>
                         </p>
 
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center gap-2">
-                                <span class="text-3xl font-extrabold text-yellow-500">
-                                    <%= praia.media_avaliacao ?? 0 %>
-                                </span>
-
-                                <svg xmlns="http://www.w3.org/2000/svg"
-                                     class="h-6 w-6 text-yellow-500"
-                                     viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M9.049 2.927c.3-.921 1.635-.921 1.935 0l1.24 3.803a1 1 0 
-                                    00.95.69h4.004c.969 0 1.371 1.24.588 1.838l-3.23 
-                                    2.345a1 1 0 00-.364 1.118l1.24 3.803c.3.921-.755 
-                                    1.688-1.54 1.118l-3.23-2.345a1 1 0 00-1.175 
-                                    0l-3.23 2.345c-.785.57-1.84-.197-1.54-1.118l1.24-
-                                    3.803a1 1 0 00-.364-1.118L2.245 9.258c-.783-.598-.381-
-                                    1.838.588-1.838h4.004a1 1 0 00.95-.69l1.24-3.803z"/>
-                                </svg>
-                            </div>
-
-                            <span class="text-sm text-gray-600">
-                                (<%= praia.total_avaliacoes ?? 0 %> avaliações)
-                            </span>
-                        </div>
-
                         <a href="/praias/<%= praia.id_praia %>"
-                        class="block w-full text-center py-2 px-4 rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 transition">
+                        class="block w-full text-center py-2 px-4 rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 transition mt-auto">
                             Ver Detalhes
                         </a>
 

@@ -35,10 +35,11 @@ app.set("layout", "layouts/main");
 app.use(express.static(path.join(__dirname, "public")));
 
 // ============================================================
-// MIDDLEWARES
+// MIDDLEWARES DE PARSE (IMPORTANTE PARA O FORMULÁRIO)
 // ============================================================
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// "extended: true" permite receber objetos aninhados e o token CSRF via body
+app.use(express.urlencoded({ extended: true })); 
 app.use(cookieParser());
 
 // ============================================================
@@ -49,19 +50,20 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false, // true somente em HTTPS
+        secure: false, // Mude para true se estiver usando HTTPS em produção
         httpOnly: true,
         maxAge: 1000 * 60 * 60 // 1 hora
     }
 }));
 
 // ============================================================
-// CSRF — SOMENTE PARA ROTAS DE VIEWS
+// CSRF — PROTEÇÃO PARA FORMULÁRIOS
 // ============================================================
+// Habilita proteção CSRF usando cookies
 const csrfProtection = csrf({ cookie: true });
 
 app.use((req, res, next) => {
-    // Aplicar CSRF somente nas rotas de Views (não API)
+    // Aplicar CSRF somente nas rotas de Views (navegador), ignorar API JSON
     if (!req.originalUrl.startsWith("/api")) {
         return csrfProtection(req, res, next);
     }
@@ -72,20 +74,21 @@ app.use((req, res, next) => {
 // VARIÁVEIS GLOBAIS PARA VIEWS
 // ============================================================
 app.use((req, res, next) => {
-    // Se o usuário está logado
+    // Variável para verificar nos EJS se há usuário logado
     res.locals.usuarioLogado = !!req.session.userId;
 
-    // csrfToken (evita crash nas rotas sem CSRF)
+    // Disponibiliza o Token CSRF para todos os formulários EJS
     try {
         res.locals.csrfToken = req.csrfToken ? req.csrfToken() : "";
-    } catch {
+    } catch (err) {
         res.locals.csrfToken = "";
     }
 
-    // Flash messages
+    // Flash messages (Mensagens de Sucesso/Erro)
     res.locals.successMessage = req.session.successMessage || null;
     res.locals.errorMessage = req.session.errorMessage || null;
 
+    // Limpa as mensagens da sessão após passá-las para a view
     delete req.session.successMessage;
     delete req.session.errorMessage;
 
@@ -100,7 +103,7 @@ app.get("/health", (req, res) => {
 });
 
 // ============================================================
-// ROTAS DA API
+// ROTAS DA API (JSON)
 // ============================================================
 app.use("/api/usuarios", usuarioRoutes);
 app.use("/api/praias", praiaRoutes);
@@ -108,11 +111,13 @@ app.use("/api/categorias", categoriaRoutes);
 app.use("/api/avaliacoes", avaliacaoRoutes);
 
 // ============================================================
-// ROTAS SSR (PÁGINAS)
+// ROTAS SSR (PÁGINAS EJS)
+// ============================================================
+// Aqui é onde nossa rota POST de deletar será chamada
 app.use("/", viewsRouter);
 
 // ============================================================
-// 404
+// TRATAMENTO DE ERRO 404
 // ============================================================
 app.use((req, res) => {
     if (req.originalUrl.startsWith("/api")) {

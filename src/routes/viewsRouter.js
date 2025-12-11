@@ -7,7 +7,8 @@ import bcrypt from "bcrypt";
 import {
     listarPraias,
     detalharPraia,
-    atualizarPraia
+    atualizarPraia,
+    deletarPraia // <--- ADICIONADO AQUI
 } from "../controllers/praiaController.js";
 
 const viewsRouter = Router();
@@ -328,7 +329,7 @@ viewsRouter.get("/praias/:id/editar", authMiddleware, async (req, res) => {
 });
 
 /* ============================================================
-   ➤ SALVAR EDIÇÃO DA PRAIA (com validação)
+   ➤ SALVAR EDIÇÃO DA PRAIA
 ============================================================ */
 viewsRouter.post("/praias/:id/editar", authMiddleware, async (req, res) => {
     const id_praia = req.params.id;
@@ -383,6 +384,12 @@ viewsRouter.post("/praias/:id/editar", authMiddleware, async (req, res) => {
 });
 
 /* ============================================================
+   ➤ EXCLUIR PRAIA (ROTA NOVA)
+============================================================ */
+// Esta rota captura o POST do formulário HTML de exclusão
+viewsRouter.post("/praias/:id/deletar", authMiddleware, deletarPraia);
+
+/* ============================================================
    ➤ PÁGINA DE PERFIL DO USUÁRIO
 ============================================================ */
 viewsRouter.get("/perfil", authMiddleware, async (req, res) => {
@@ -418,7 +425,7 @@ viewsRouter.get("/perfil", authMiddleware, async (req, res) => {
 });
 
 /* ============================================================
-   ➤ EDITAR CONTA (CORRIGIDO)
+   ➤ EDITAR CONTA
 ============================================================ */
 viewsRouter.post("/perfil/editar", authMiddleware, async (req, res) => {
     const { nome, email, senha } = req.body;
