@@ -60,18 +60,6 @@
             >
         </div>
 
-        <div>
-            <label class="font-semibold">Categorias</label>
-            <select name="categorias" multiple class="w-full p-2 border rounded-lg">
-                <% categorias.forEach(cat => { %>
-                    <option value="<%= cat.id_categoria %>" 
-                        <%= categoriasSelecionadas.includes(cat.id_categoria) ? "selected" : "" %>>
-                        <%= cat.nome %>
-                    </option>
-                <% }) %>
-            </select>
-        </div>
-
         <button
             type="submit"
             class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-800 transition">
