@@ -11,8 +11,6 @@ import { testConnection } from "./db.js";
 // Rotas de API
 import usuarioRoutes from "./routes/usuarioRoutes.js";
 import praiaRoutes from "./routes/praiaRoutes.js";
-import categoriaRoutes from "./routes/categoriaRoutes.js";
-import avaliacaoRoutes from "./routes/avaliacaoRoutes.js";
 
 // Rotas de Views (SSR)
 import viewsRouter from "./routes/viewsRouter.js";
@@ -107,8 +105,6 @@ app.get("/health", (req, res) => {
 // ============================================================
 app.use("/api/usuarios", usuarioRoutes);
 app.use("/api/praias", praiaRoutes);
-app.use("/api/categorias", categoriaRoutes);
-app.use("/api/avaliacoes", avaliacaoRoutes);
 
 // ============================================================
 // ROTAS SSR (PÁGINAS EJS)
