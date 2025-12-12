@@ -2,9 +2,9 @@
 
 ## 1) Problema
 
-Turistas e moradores, em qualquer região litorânea, têm dificuldade em descobrir e avaliar praias de forma confiável.
+Turistas e moradores, em qualquer região litorânea, têm dificuldade em descobrir praias de forma confiável.
 Isso causa perda de tempo e experiências ruins, já que as informações estão espalhadas ou são incompletas.
-No início, o foco será **usuários que buscam praias para lazer**, com o objetivo de **organizar informações e permitir avaliações confiáveis**.
+No início, o foco será **usuários que buscam praias para lazer**, com o objetivo de **organizar informações**.
 
 ## 2) Atores e Decisores
 
@@ -14,8 +14,7 @@ Decisores/Apoiadores: Administradores do sistema, Coordenadores do projeto
 ## 3) Casos de uso
 
 Todos: Logar/deslogar do sistema; Manter dados cadastrais
-Usuário: Manter (inserir, mostrar, editar, remover) avaliações; visualizar ranking e categorias de praias
-Administrador (opcional): Manter (inserir, mostrar, editar, remover) praias e categorias
+Usuário: Manter (inserir, mostrar, editar, remover) praias; 
 
 ## 4) Limites e suposições
 
@@ -25,7 +24,7 @@ Plano B: Sem internet → rodar local e salvar em LocalStorage; sem tempo do pro
 
 ## 5) Hipóteses + validação
 
-H-Valor: Se os usuários visualizarem praias com categorias e rankings, então escolhem melhores praias de forma mais rápida e confiável
+H-Valor: Se os usuários visualizarem praias com mais detalhes, então escolhem melhores praias de forma mais rápida e confiável
 Validação (valor): Teste com 5 usuários; sucesso se ≥4 encontrarem praias relevantes sem ajuda
 
 H-Viabilidade: Com HTML/CSS/JS + backend simples (Node.js/Express ou similar), criar e listar praias e avaliações leva até 1 segundo
@@ -37,18 +36,17 @@ Validação (viabilidade): Medição no protótipo; meta: 1s ou menos na maioria
 
 1. Usuário faz login
 2. Seleciona **localização desejada**
-3. Lista de praias filtrada aparece, com categorias e ranking
-4. Usuário pode **visualizar detalhes** ou **avaliar a praia** na mesma tela
-5. Sistema salva avaliação (se aplicável)
-6. Ranking e média de notas são atualizados automaticamente
+3. Lista de praias filtradas
+4. Usuário pode **visualizar detalhes** 
+
 
 **Primeira fatia vertical (escopo mínimo):**
-Inclui: Tela de login, lista de praias com filtro por localização, cadastrar avaliação na mesma tela
+Inclui: Tela de login, lista de praias com filtro por localização
+
 Critérios de aceite:
 
 * Usuário consegue se autenticar e sair da sessão
 * Lista de praias aparece apenas para a localização selecionada
-* Avaliação criada aparece imediatamente no ranking
 
 **Fluxo principal (curto):**  
 
@@ -81,13 +79,13 @@ Critérios de aceite:
 ### 8.2 Front-end (servidor de aplicação)
 
 **Front-end (servidor):** React ou Next.js
-**Hospedagem:** Vercel
+**Hospedagem:** Render
 
 ### 8.3 Back-end (API/servidor)
 
 **Back-end (API):** Node.js + Express
-**Banco de dados:** PostgreSQL ou MongoDB
-**Deploy do back-end:** Render ou Railway
+**Banco de dados:** PostgreSQL 
+**Deploy do back-end:** Render 
 
 **Integração das Tecnologias:**  
 
@@ -99,8 +97,7 @@ Critérios de aceite:
 
 * Usuario — pessoa que usa o sistema
 * Praia — praia cadastrada no guia
-* Categoria — tipo ou característica da praia
-* Avaliacao — avaliação feita por um usuário sobre uma praia
+
 
 ### 9.2 Campos por entidade
 
@@ -112,10 +109,6 @@ Critérios de aceite:
 | nome            | texto       | sim         | "Ana Souza"                                 |
 | email           | texto       | sim (único) | "[ana@exemplo.com](mailto:ana@exemplo.com)" |
 | senha\_hash     | texto       | sim         | "\$2a\$10\$..."                             |
-| foto\_perfil    | texto (URL) | não         | "urlfoto.jpg"                               |
-| bio             | texto       | não         | "Amo praias e surf"                         |
-| dataCriacao     | data/hora   | sim         | 2025-08-20 14:30                            |
-| dataAtualizacao | data/hora   | sim         | 2025-08-20 15:10                            |
 
 ### Praia
 
@@ -127,30 +120,14 @@ Critérios de aceite:
 | descricao   | texto  | não         | "Ótima para surf e trilha" |
 | foto\_url   | texto  | não         | "rosa.jpg"                 |
 
-### Categoria
 
-| Campo | Tipo   | Obrigatório | Exemplo |
-| ----- | ------ | ----------- | ------- |
-| id    | número | sim         | 1       |
-| nome  | texto  | sim         | "Surf"  |
 
-### Avaliacao
 
-| Campo       | Tipo       | Obrigatório | Exemplo           |
-| ----------- | ---------- | ----------- | ----------------- |
-| id          | número     | sim         | 1                 |
-| nota        | número     | sim         | 5                 |
-| comentario  | texto      | não         | "Praia incrível!" |
-| usuario\_id | número(fk) | sim         | 1                 |
-| praia\_id   | número(fk) | sim         | 1                 |
-| data        | data/hora  | sim         | 2025-08-20 16:00  |
 
 ### 9.3 Relações entre entidades
 
-* Um Usuario tem muitas Avaliacoes (1→N)
 * Um Usuario pode cadastrar muitas Praias (1→N)
-* Uma Praia tem muitas Avaliacoes (1→N)
-* Uma Praia pode ter muitas Categorias (N→N via tabela associativa Praia\_Categoria)
+* Uma Praia tem um usuario (1→1)
 
 ![Relação das Entidades](imgs/relaçãoEntidades.png)
 
@@ -172,32 +149,12 @@ Critérios de aceite:
     estado VARCHAR(255) NOT NULL,
     descricao TEXT,
     foto_url TEXT,
-    media_avaliacao NUMERIC(3, 2) DEFAULT 0.00
     );
 
-    CREATE TABLE categorias (
-    id_categoria SERIAL PRIMARY KEY,
-    nome VARCHAR(255) NOT NULL UNIQUE
-    );
+   
 
-    CREATE TABLE avaliacoes (
-    id_avaliacao SERIAL PRIMARY KEY,
-    nota INT NOT NULL CHECK (nota >= 1 AND nota <= 5),
-    comentario TEXT,
-    data_avaliacao TIMESTAMP NOT NULL DEFAULT NOW(),
-    id_usuario INT NOT NULL,
-    id_praia INT NOT NULL,
-    FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario),
-    FOREIGN KEY (id_praia) REFERENCES praias (id_praia)
-    );
+  
 
-    CREATE TABLE praias_categorias (
-    id_praia INT NOT NULL,
-    id_categoria INT NOT NULL,
-    PRIMARY KEY (id_praia, id_categoria),
-    FOREIGN KEY (id_praia) REFERENCES praias (id_praia),
-    FOREIGN KEY (id_categoria) REFERENCES categorias (id_categoria)
-    ); 
 
 
      SELECT p.nome, p.media_avaliacao
@@ -233,42 +190,15 @@ Critérios de aceite:
 
 
       -- 2. Inserir Praias
-     INSERT INTO praias (nome, cidade, estado, descricao, foto_url, media_avaliacao) VALUES
-    ('Praia do Rosa', 'Imbituba', 'SC', 'Famosa por suas ondas perfeitas para o surf e beleza natural intocada.', 'rosa.jpg', 0.00),
-    ('Praia de Iracema', 'Fortaleza', 'CE', 'Praia urbana com vida noturna agitada e ótimos restaurantes na orla.', 'iracema.jpg', 0.00),
-    ('Praia de Pipa', 'Tibau do Sul', 'RN', 'Conhecida por suas falésias impressionantes e pela presença de golfinhos.', 'pipa.jpg', 0.00);
+     INSERT INTO praias (nome, cidade, estado, descricao, foto_url) VALUES
+    ('Praia do Rosa', 'Imbituba', 'SC', 'Famosa por suas ondas perfeitas para o surf e beleza natural intocada.', 'rosa.jpg'),
+    ('Praia de Iracema', 'Fortaleza', 'CE', 'Praia urbana com vida noturna agitada e ótimos restaurantes na orla.', 'iracema.jpg'),
+    ('Praia de Pipa', 'Tibau do Sul', 'RN', 'Conhecida por suas falésias impressionantes e pela presença de golfinhos.', 'pipa.jpg');
 
-    -- 3. Inserir Categorias
-    INSERT INTO categorias (nome) VALUES
-    ('Surf'),
-    ('Família'),
-    ('Vida Noturna'),
-    ('Beleza Natural');
+   
+    
 
-     -- 4. Inserir Avaliações (Foreign Keys referenciam Usuários e Praias acima)
-    -- Ana (id 1) avalia Rosa (id 1)
-    -- Bruno (id 2) avalia Iracema (id 2)
-    -- Carla (id 3) avalia Pipa (id 3)
-    -- Bruno (id 2) avalia Rosa (id 1)
-     INSERT INTO avaliacoes (nota, comentario, id_usuario, id_praia) VALUES
-    (5, 'Ondas perfeitas e visual de tirar o fôlego!', 1, 1),
-    (4, 'Ótimo lugar para caminhar no fim da tarde.', 2, 2),
-    (5, 'Nunca vi tantos golfinhos, uma experiência mágica.', 3, 3),
-    (3, 'A praia é bonita, mas achei a infraestrutura fraca.', 2, 1);
 
-    -- 5. Ligar Praias a Categorias (Praias_Categorias)
-    INSERT INTO praias_categorias (id_praia, id_categoria) VALUES
-    (1, 1), -- Praia do Rosa é para Surf
-    (1, 4), -- Praia do Rosa tem Beleza Natural
-    (2, 2), -- Praia de Iracema é para Família
-    (2, 3), -- Praia de Iracema tem Vida Noturna
-    (3, 4); -- Praia de Pipa tem Beleza Natural
-
-    -- 6. ATUALIZAR MÉDIA DE AVALIAÇÃO (IMPORTANTE)
-    -- Nota: Esta parte deve ser feita pelo seu Controller (criarAvaliacao), mas é bom rodar manualmente para os dados iniciais.
-     UPDATE praias p SET media_avaliacao = (
-    SELECT AVG(a.nota) FROM avaliacoes a WHERE a.id_praia = p.id_praia
-     );
 
     -- FIM DA POPULAÇÃO
 
@@ -287,12 +217,7 @@ Critérios de aceite:
 
     ADD COLUMN data_atualizacao TIMESTAMP DEFAULT NOW();
 
-    CREATE TABLE comentarios (
-    id_comentario SERIAL PRIMARY KEY,
-    id_praia INT NOT NULL,
-    id_usuario INT NOT NULL,
-    texto TEXT NOT NULL,
-    data_criacao TIMESTAMP NOT NULL DEFAULT NOW(),
+   
 
     FOREIGN KEY (id_praia) REFERENCES praias (id_praia) ON DELETE CASCADE,
     FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario) ON DELETE CASCADE

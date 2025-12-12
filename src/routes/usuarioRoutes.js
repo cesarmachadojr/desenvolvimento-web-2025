@@ -1,24 +1,26 @@
 // src/routes/usuarioRoutes.js
 import { Router } from "express";
 import {
-    listarUsuarios,
-    criarUsuario,
-    atualizarUsuario,
-    deletarUsuario,
-    login,
-    logout
+    listarUsuarios,
+    criarUsuario,
+    atualizarUsuario,
+    deletarUsuario,
+    login,
+    logout
 } from "../controllers/usuarioController.js";
 
 const router = Router();
 
 /* ===========================================
-   AUTENTICAÇÃO
+   AUTENTICAÇÃO
 =========================================== */
 router.post("/login", login);
-router.post("/logout", logout);
+
+// CORREÇÃO AQUI: Mudado de .post para .get para funcionar com o link <a> do HTML
+router.get("/logout", logout); 
 
 /* ===========================================
-   CRUD DE USUÁRIOS (API)
+   CRUD DE USUÁRIOS (API)
 =========================================== */
 router.get("/usuarios", listarUsuarios);
 
