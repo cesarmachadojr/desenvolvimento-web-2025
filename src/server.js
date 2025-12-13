@@ -18,6 +18,9 @@ import viewsRouter from "./routes/viewsRouter.js";
 dotenv.config();
 const app = express();
 
+// Definição do ambiente (para configurar 'secure' nos cookies)
+const isProduction = process.env.NODE_ENV === "production";
+
 // ============================================================
 // CONFIGURAÇÃO DO EJS
 // ============================================================
@@ -33,35 +36,47 @@ app.set("layout", "layouts/main");
 app.use(express.static(path.join(__dirname, "public")));
 
 // ============================================================
-// MIDDLEWARES DE PARSE (IMPORTANTE PARA O FORMULÁRIO)
+// MIDDLEWARES DE PARSE
 // ============================================================
 app.use(express.json());
-// "extended: true" permite receber objetos aninhados e o token CSRF via body
 app.use(express.urlencoded({ extended: true })); 
 app.use(cookieParser());
 
 // ============================================================
-// SESSÃO
+// SESSÃO (ALTERADO: Segurança Reforçada)
 // ============================================================
 app.use(session({
     secret: process.env.SESSION_SECRET || "supersecretkey",
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false, // Mude para true se estiver usando HTTPS em produção
+        // 'secure: true' exige HTTPS. Em localhost usamos false, no deploy true.
+        secure: isProduction, 
+        
+        // 'httpOnly: true' impede que scripts JS no navegador leiam o cookie (Proteção XSS)
         httpOnly: true,
+        
+        // 'sameSite: strict' impede envio do cookie se a requisição vier de outro site (Proteção CSRF)
+        sameSite: 'strict', 
+        
         maxAge: 1000 * 60 * 60 // 1 hora
     }
 }));
 
 // ============================================================
-// CSRF — PROTEÇÃO PARA FORMULÁRIOS
+// CSRF (ALTERADO: Cookie Seguro)
 // ============================================================
-// Habilita proteção CSRF usando cookies
-const csrfProtection = csrf({ cookie: true });
+// Configura o cookie que carrega o segredo do CSRF para ser seguro também
+const csrfProtection = csrf({ 
+    cookie: {
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: isProduction
+    }
+});
 
 app.use((req, res, next) => {
-    // Aplicar CSRF somente nas rotas de Views (navegador), ignorar API JSON
+    // Aplicar CSRF somente nas rotas de Views, ignorar API JSON
     if (!req.originalUrl.startsWith("/api")) {
         return csrfProtection(req, res, next);
     }
@@ -72,21 +87,21 @@ app.use((req, res, next) => {
 // VARIÁVEIS GLOBAIS PARA VIEWS
 // ============================================================
 app.use((req, res, next) => {
-    // Variável para verificar nos EJS se há usuário logado
+    // Verifica se há usuário logado
     res.locals.usuarioLogado = !!req.session.userId;
 
     // Disponibiliza o Token CSRF para todos os formulários EJS
     try {
-        res.locals.csrfToken = req.csrfToken ? req.csrfToken() : "";
+        // Se a proteção CSRF estiver ativa na rota, pega o token. Se não, string vazia.
+        res.locals.csrfToken = (typeof req.csrfToken === 'function') ? req.csrfToken() : "";
     } catch (err) {
         res.locals.csrfToken = "";
     }
 
-    // Flash messages (Mensagens de Sucesso/Erro)
+    // Flash messages
     res.locals.successMessage = req.session.successMessage || null;
     res.locals.errorMessage = req.session.errorMessage || null;
 
-    // Limpa as mensagens da sessão após passá-las para a view
     delete req.session.successMessage;
     delete req.session.errorMessage;
 
@@ -109,7 +124,6 @@ app.use("/api/praias", praiaRoutes);
 // ============================================================
 // ROTAS SSR (PÁGINAS EJS)
 // ============================================================
-// Aqui é onde nossa rota POST de deletar será chamada
 app.use("/", viewsRouter);
 
 // ============================================================
