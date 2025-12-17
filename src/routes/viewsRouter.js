@@ -91,7 +91,7 @@ viewsRouter.post("/login", async (req, res) => {
 });
 
 /* ============================================================
-   ➤ LISTAR PRAIAS — PROTEGIDA
+   ➤ LISTAR PRAIAS — PROTEGIDA (usa o controller)
 ============================================================ */
 viewsRouter.get("/praias", authMiddleware, async (req, res) => {
     try {
@@ -259,7 +259,7 @@ viewsRouter.post("/praias/nova", authMiddleware, async (req, res) => {
 });
 
 /* ============================================================
-   ➤ DETALHES DA PRAIA
+   ➤ DETALHES DA PRAIA (usa controller) 
 ============================================================ */
 viewsRouter.get("/praias/:id", authMiddleware, async (req, res) => {
     try {
@@ -384,7 +384,7 @@ viewsRouter.post("/praias/:id/editar", authMiddleware, async (req, res) => {
 });
 
 /* ============================================================
-   ➤ EXCLUIR PRAIA (ROTA NOVA)
+   ➤ EXCLUIR PRAIA (ROTA NOVA) (chama o controller)
 ============================================================ */
 // Esta rota captura o POST do formulário HTML de exclusão
 viewsRouter.post("/praias/:id/deletar", authMiddleware, deletarPraia);
@@ -473,5 +473,6 @@ viewsRouter.post("/perfil/excluir", authMiddleware, async (req, res) => {
         res.redirect("/perfil");
     }
 });
+
 
 export default viewsRouter;
